@@ -8,7 +8,7 @@ import glob
 import scipy.optimize as opt
 
 
-os.chdir(os.path.dirname(os.path.realpath(__file__)))
+
 
 
 def formatmultiplotaxis(ax,xlabel,ylabel,font=15,legloc=3):
@@ -245,9 +245,8 @@ class MyTest(unittest.TestCase):
 
 
 
-
-suite = unittest.TestLoader().loadTestsFromTestCase(MyTest)
-unittest.TextTestRunner(verbosity=2).run(suite)
-
-
-# processfolder()
+if __name__ == "__main__":
+    #ensures that test cases are not run when importing the module.
+    os.chdir(os.path.dirname(os.path.realpath(__file__)))
+    suite = unittest.TestLoader().loadTestsFromTestCase(MyTest)
+    unittest.TextTestRunner(verbosity=2).run(suite)
