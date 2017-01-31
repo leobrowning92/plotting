@@ -126,6 +126,8 @@ class multisweep(object):
 
 
     def savefig(self,savedir="plots/",v=False):
+        if os.path.isdir(savedir) == False:
+            os.system("mkdir " +savedir)
         plt.figure(self.path) #sets the current figure as labeled by path
         plt.savefig(os.path.join(savedir,os.path.basename(self.path)[:-4]+".png"))
         if v:
@@ -178,6 +180,8 @@ class sequentialMeasurements(object):
         def save_plots(self,v=False):
             if v:
                 print ("beginning plotting sequence")
+            if os.path.isdir("plots") == False:
+                os.system("mkdir " +self.dir+ "plots/")
             for i in self.datasets:
                 i.savefig(self.dir+"plots/",v)
         def make_R(self):
