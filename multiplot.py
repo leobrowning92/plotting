@@ -16,7 +16,7 @@ def formatmultiplotaxis(ax,xlabel,ylabel,font=15,legloc=3):
     ax.set_ylabel(ylabel, fontsize=font)
     ax.tick_params(axis='both', which='major', labelsize=font)
     ax.grid(True,which="Major")
-    ax.legend(loc='best', fancybox=True, framealpha=0.5,fontsize=font)
+    ax.legend(loc='best', fancybox=True, framealpha=0.5,fontsize=font,ncol=2)
 def linear(x,m,c):
     return m*x+c
 
@@ -121,7 +121,7 @@ class multisweep(object):
             self.singleplot(ax1,runs)
         formatmultiplotaxis(ax1,"$V$","$I$")
         ax1.set_title(os.path.basename(self.path),fontsize=10,y=1.05)
-        ax1.legend(loc='best', fancybox=True, framealpha=0.5,fontsize=15)
+        ax1.legend(loc='best', fancybox=True, framealpha=0.5,fontsize=15,ncol=2)
         self.fig=fig
 
 
@@ -160,7 +160,7 @@ class sequentialMeasurements(object):
 
         def make_multisweepData(self):
             log=[]
-            for path in glob.glob(self.dir+"data/*.csv"):
+            for path in sorted(glob.glob(self.dir+"data/*.csv")):
                 if "x" in path:
                     try:
                         for i in range(3):
