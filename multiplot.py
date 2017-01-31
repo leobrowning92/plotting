@@ -6,6 +6,8 @@ plt.style.use('ggplot')
 import matplotlib
 import glob
 import scipy.optimize as opt
+import re
+import sys
 
 
 
@@ -33,7 +35,7 @@ class multisweep(object):
         self.updown = updown
 
         #variables outomatically generated from arguments
-        self.data = np.genfromtxt(fname=self.path,skip_header=1,delimiter=',')
+        self.data = np.genfromtxt(fname=self.path,skip_header=1,delimiter=',',dtype=float)
         self.step=self.data[1,0]-self.data[0,0]
         self.runs = self.splitdata()
         self.timestamp = self.get_timestamp()
@@ -108,7 +110,7 @@ class multisweep(object):
 
 
 
-    def makefig(self,type="simple",runs=[0]):
+    def makefig(self,type="simple",runs=[0],v=False):
         col_width =7 #in cm
         #note, first argument is the label of the figure for later saving
         fig=plt.figure(self.path,figsize=(col_width,col_width*0.8), facecolor="white")
@@ -123,6 +125,8 @@ class multisweep(object):
         ax1.set_title(os.path.basename(self.path),fontsize=10,y=1.05)
         ax1.legend(loc='best', fancybox=True, framealpha=0.5,fontsize=15,ncol=2)
         self.fig=fig
+        if v:
+            print(type,"graph made from ",self.path)
 
 
     def savefig(self,savedir="plots/",v=False):
@@ -163,20 +167,26 @@ class sequentialMeasurements(object):
             for path in sorted(glob.glob(self.dir+"data/*.csv")):
                 if "x" in path:
                     try:
-                        for i in range(3):
-                            try:
-                                self.datasets.append(multisweep(path,int(path[path.index("x")+1:path.index("x")+3-i])))
-                                break
-                            except:
-                                pass
+                        self.datasets.append(multisweep(path,int(re.search("x(\d{1,3})",path).group(1))))
+                    except ValueError as e:
+                        log.append([path,e])
+                        print(path)
+                        print('line {}'.format(sys.exc_info()[-1].tb_lineno), type(e), e)
+                        print("incomplete dataset probably causeing uneven splitting. plot manually if necessary")
+
                     except Exception as e:
                         log.append([path,e])
+
+                        print(path)
+                        print('line {}'.format(sys.exc_info()[-1].tb_lineno), type(e), e)
+
+
             return log
-        def make_multiplots(self):
+        def make_multiplots(self,v=False):
             """calls the multiplot function on every dataset in the measurement
             sequence"""
             for i in self.datasets:
-                i.makefig("multi")
+                i.makefig("multi",v=v)
         def save_plots(self,v=False):
             if v:
                 print ("beginning plotting sequence")
