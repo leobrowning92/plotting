@@ -13,12 +13,26 @@ import sys
 
 
 
-def formatmultiplotaxis(ax,xlabel,ylabel,font=15,legloc=3):
+def format_primary_axis(ax,xlabel,ylabel,title,font=15,legloc='best'):
     ax.set_xlabel(xlabel, fontsize=font)
     ax.set_ylabel(ylabel, fontsize=font)
     ax.tick_params(axis='both', which='major', labelsize=font)
     ax.grid(True,which="Major")
-    ax.legend(loc='best', fancybox=True, framealpha=0.5,fontsize=font,ncol=2)
+    offset_text = ax.yaxis.get_offset_text()
+    offset_text.set_size(font)
+    ax.set_title(title,fontsize=font,y=1.05)
+    ax.legend(loc=legloc, fancybox=True, framealpha=0.5,fontsize=font,ncol=2)
+
+def format_second_axis(ax,ylabel,font=15,color='b'):
+    ax.set_ylabel(ylabel,fontsize=font,color='b')
+    ax.tick_params(axis='both', which='major', labelsize=font)
+    offset_text = ax.yaxis.get_offset_text()
+    offset_text.set_size(font)
+    offset_text.set_color('b')
+    for tl in ax.get_yticklabels():
+        tl.set_color('b')
+
+
 def linear(x,m,c):
     return m*x+c
 
@@ -83,6 +97,60 @@ class multisweep(object):
                     np.concatenate((self.runs[i*2,:,1],self.runs[i*2+1,:,1]))
                     ,"-",linewidth=2.0,label=str(i+1)+" of " + str(sweepnum))
 
+    def sawplot(self,ax):
+        ax.plot(self.data[:,1],linewidth=2)
+        ax2=ax.twinx()
+        ax2.plot(self.data[:,0],'b--',linewidth=1)
+        return ax2
+
+
+
+
+    def make_singleaxis_fig(self,plottype="simple",runs=[0],v=False):
+        col_width =10 #in cm
+
+        #make the figure
+        fig=plt.figure(self.path,figsize=(col_width,col_width*0.6), facecolor="white")
+        ax1=plt.subplot(111)
+        #plot the graph
+        if plottype == "simple":
+            self.simpleplot(ax1)
+        elif plottype == "multi":
+            self.multiplot(ax1)
+        elif plottype == "single":
+            self.singleplot(ax1,runs)
+        #format axis
+        format_primary_axis(ax1,"V","I",os.path.basename(self.path))
+        self.fig=fig
+        if v:
+            print(plottype,"graph made from ",self.path)
+    def make_twoaxis_fig(self,v=False):
+        #make figure
+        col_width=10
+        fig=plt.figure(self.path,figsize=(col_width,col_width*0.6), facecolor="white")
+        ax1=plt.subplot(111)
+        ax2=self.sawplot(ax1)
+        format_primary_axis(ax1, "index", "I", os.path.basename(self.path))
+        format_second_axis(ax2, "V")
+        self.fig=fig
+        if v:
+            print("sawtooth graph made from ",self.path)
+
+
+
+
+
+    def savefig(self,savedir="plots/",tag='',v=False):
+        if os.path.isdir(savedir) == False:
+            os.system("mkdir " +savedir)
+        plt.figure(self.path) #sets the current figure as labeled by path
+        plt.savefig(os.path.join(savedir,os.path.basename(self.path)[:-4]+tag+".png"))
+        if v:
+            print("saved: ",self.path)
+
+    def get_timestamp(self):
+        return self.path[-19:-4]
+
     def calc_gradR(self,data):
         """returns R,dR from a linear fit to the first 100mV of data
         """
@@ -107,40 +175,6 @@ class multisweep(object):
             res.append(data[-1,0]/data[-1,1])
         self.finalR=np.array(res)
         return self.finalR
-
-
-
-    def makefig(self,type="simple",runs=[0],v=False):
-        col_width =7 #in cm
-        #note, first argument is the label of the figure for later saving
-        fig=plt.figure(self.path,figsize=(col_width,col_width*0.8), facecolor="white")
-        ax1=plt.subplot(111)
-        if type == "simple":
-            self.simpleplot(ax1)
-        elif type == "multi":
-            self.multiplot(ax1)
-        elif type == "single":
-            self.singleplot(ax1,runs)
-        formatmultiplotaxis(ax1,"$V$","$I$")
-        ax1.set_title(os.path.basename(self.path),fontsize=10,y=1.05)
-        ax1.legend(loc='best', fancybox=True, framealpha=0.5,fontsize=15,ncol=2)
-        self.fig=fig
-        if v:
-            print(type,"graph made from ",self.path)
-
-
-    def savefig(self,savedir="plots/",v=False):
-        if os.path.isdir(savedir) == False:
-            os.system("mkdir " +savedir)
-        plt.figure(self.path) #sets the current figure as labeled by path
-        plt.savefig(os.path.join(savedir,os.path.basename(self.path)[:-4]+".png"))
-        if v:
-            print("saved: ",self.path)
-
-    def get_timestamp(self):
-        return self.path[-19:-4]
-
-
 
     def __exit__(self,*err):
         plt.close(self.fig)
@@ -186,14 +220,17 @@ class sequentialMeasurements(object):
             """calls the multiplot function on every dataset in the measurement
             sequence"""
             for i in self.datasets:
-                i.makefig("multi",v=v)
-        def save_plots(self,v=False):
+                i.make_singleaxis_fig("multi",v=v)
+        def make_sawtoothplots(self,v=False):
+            for i in self.datasets:
+                i.make_twoaxis_fig(v=v)
+        def save_plots(self,tag='',v=False):
             if v:
                 print ("beginning plotting sequence")
             if os.path.isdir("plots") == False:
                 os.system("mkdir " +self.dir+ "plots/")
             for i in self.datasets:
-                i.savefig(self.dir+"plots/",v)
+                i.savefig(self.dir+"plots/",tag=tag,v=v)
         def make_R(self):
             for i in self.datasets:
                 i.make_gradR()
