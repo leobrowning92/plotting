@@ -97,11 +97,17 @@ class multisweep(object):
                     np.concatenate((self.runs[i*2,:,1],self.runs[i*2+1,:,1]))
                     ,"-",linewidth=2.0,label=str(i+1)+" of " + str(sweepnum))
 
-    def sawplot(self,ax):
+    def sawplotI(self,ax):
         ax.plot(self.data[:,1],linewidth=2)
         ax2=ax.twinx()
         ax2.plot(self.data[:,0],'b--',linewidth=1)
         return ax2
+    def sawplotG(self,ax):
+        ax.plot(self.data[:,1]/self.data[:,0],linewidth=2)
+        ax2=ax.twinx()
+        ax2.plot(self.data[:,0],'b--',linewidth=1)
+        return ax2
+
 
 
 
@@ -124,19 +130,29 @@ class multisweep(object):
         self.fig=fig
         if v:
             print(plottype,"graph made from ",self.path)
-    def make_twoaxis_fig(self,v=False):
+    def make_sawtoothIV_fig(self,v=False):
         #make figure
         col_width=10
         fig=plt.figure(self.path,figsize=(col_width,col_width*0.6), facecolor="white")
         ax1=plt.subplot(111)
-        ax2=self.sawplot(ax1)
-        format_primary_axis(ax1, "index", "I", os.path.basename(self.path))
+        ax2=self.sawplotI(ax1)
+        format_primary_axis(ax1, "index", "I (A)", os.path.basename(self.path))
         format_second_axis(ax2, "V")
         self.fig=fig
         if v:
             print("sawtooth graph made from ",self.path)
 
-
+    def make_sawtoothGV_fig(self,v=False):
+        #make figure
+        col_width=10
+        fig=plt.figure(self.path,figsize=(col_width,col_width*0.6), facecolor="white")
+        ax1=plt.subplot(111)
+        ax2=self.sawplotG(ax1)
+        format_primary_axis(ax1, "index", "G (S)", os.path.basename(self.path))
+        format_second_axis(ax2, "V")
+        self.fig=fig
+        if v:
+            print("sawtooth graph made from ",self.path)
 
 
 
@@ -221,9 +237,12 @@ class sequentialMeasurements(object):
             sequence"""
             for i in self.datasets:
                 i.make_singleaxis_fig("multi",v=v)
-        def make_sawtoothplots(self,v=False):
+        def make_sawtoothIVplots(self,v=False):
             for i in self.datasets:
-                i.make_twoaxis_fig(v=v)
+                i.make_sawtoothIV_fig(v=v)
+        def make_sawtoothGVplots(self,v=False):
+            for i in self.datasets:
+                i.make_sawtoothGV_fig(v=v)
         def save_plots(self,tag='',v=False):
             if v:
                 print ("beginning plotting sequence")
