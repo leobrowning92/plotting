@@ -8,6 +8,7 @@ import glob
 import scipy.optimize as opt
 import re
 import sys
+import scipy.constants as const
 
 
 
@@ -51,7 +52,12 @@ class multisweep(object):
         #variables outomatically generated from arguments
         self.data = np.genfromtxt(fname=self.path,skip_header=1,delimiter=',',dtype=float)
         self.step=self.data[1,0]-self.data[0,0]
-        self.runs = self.splitdata()
+        try:
+            self.runs = self.splitdata()
+        except Exception as e:
+            print(e)
+            self.runs=[]
+            print(self.path,"will only plot as a single dataset")
         self.timestamp = self.get_timestamp()
         self.maxV=max(self.data[:,0])
 
@@ -103,7 +109,9 @@ class multisweep(object):
         ax2.plot(self.data[:,0],'b--',linewidth=1)
         return ax2
     def sawplotG(self,ax):
-        ax.plot(self.data[:,1]/self.data[:,0],linewidth=2)
+
+        g0data=self.data[:,1]/self.data[:,0] / const.physical_constants["conductance quantum"][0]
+        ax.plot(g0data,linewidth=2)
         ax2=ax.twinx()
         ax2.plot(self.data[:,0],'b--',linewidth=1)
         return ax2
@@ -148,7 +156,7 @@ class multisweep(object):
         fig=plt.figure(self.path,figsize=(col_width,col_width*0.6), facecolor="white")
         ax1=plt.subplot(111)
         ax2=self.sawplotG(ax1)
-        format_primary_axis(ax1, "index", "G (S)", os.path.basename(self.path))
+        format_primary_axis(ax1, "index", "G $(G_0)$", os.path.basename(self.path))
         format_second_axis(ax2, "V")
         self.fig=fig
         if v:
@@ -236,7 +244,10 @@ class sequentialMeasurements(object):
             """calls the multiplot function on every dataset in the measurement
             sequence"""
             for i in self.datasets:
-                i.make_singleaxis_fig("multi",v=v)
+                if i.runs==[]:
+                    i.make_singleaxis_fig("simple",v=v)
+                else:
+                    i.make_singleaxis_fig("multi",v=v)
         def make_sawtoothIVplots(self,v=False):
             for i in self.datasets:
                 i.make_sawtoothIV_fig(v=v)
