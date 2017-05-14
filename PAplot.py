@@ -2,16 +2,16 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-import os
+import os, glob, sys
 
 
-
+# Helper functions
 def checkdir(directoryname):
     if os.path.isdir(directoryname) == False:
         os.system("mkdir " + directoryname)
     pass
 
-
+# plotting functions
 def plot_IV(path, skip=1, delim=",", show=False,
             title='IV', xlabel='V', ylabel='I', data1="y1", log=False):
     """
@@ -58,6 +58,8 @@ def plot_IV(path, skip=1, delim=",", show=False,
 
 
 def overlap_axis_plot(ax1, x, y1, y2,  xlabel, y1label, y2label, log):
+    """possible feature duplicate of plot_two_yscales()
+    more suitable for scripting"""
     if log:
         ax1.semilogy(x, y1, "r-", linewidth=2.0)
     else:
@@ -131,5 +133,32 @@ def plot_two_yscales(path, skip=1, delim=",", show=False, save=True, log=False,
     plt.close(fig)
 
 
-# plot_two_yscales("data/2016_04_21_1041_COL_chip184_device1_topgateFET.csv", skip=1, title="", show=False, log=True,
-#                  xlabel="Gate Voltage (VG)", y1label="ID (A)", y2label="IG (A)")
+def plot_folder(folder, xlabel="$V_G$", y1label="$I_{DS}$", y2label="$I_{G}$"):
+    assert folder[-1]=="/", "Error: you must pass a folder to this script"
+    filenames=glob.glob(folder+"*")
+    for i in range(len(filenames)):
+        data=np.genfromtxt(fname=filenames[i],dtype=float,delimiter=',',skip_header=1)
+        title=filenames[i]
+
+        fig = plt.figure(figsize=(10, 16), facecolor="white")
+        ax1 = plt.subplot(2, 1, 1)
+        ax2 = plt.subplot(2, 1, 2)
+
+        overlap_axis_plot(ax1, data[:,0], data[:,2], data[:,3],  xlabel, y1label, y2label, True)
+        overlap_axis_plot(ax2, data[:,0], data[:,2], data[:,3],  xlabel, y1label, y2label, False)
+
+        fig.tight_layout()
+        fig.subplots_adjust(top=1.5)
+        fig.suptitle(title, fontsize=20,y=1.05)
+        print(i,filenames[i])
+
+
+        checkdir("plots")
+        path=filenames[i]
+        name = os.path.basename(path).replace(".csv", "_plt.jpg")
+        fig.savefig("plots/" + name,bbox_inches='tight', format="jpg")
+        plt.close(fig)
+
+if __name__ == "__main__":
+    assert len(sys.argv) == 2 , "this scritpt takes 1 argument of a folder name. {} were given".format(len(sys.argv)-1)
+    plot_folder(sys.argv[1])
