@@ -55,29 +55,42 @@ def plot_IV(path, skip=1, delim=",", show=False,
     # print(name + ' plotted')
     plt.close(fig)
     pass
+def scatter_plot(ax1, x, y,  xlabel, ylabel, log):
+    if log:
+        ax1.semilogy(x, y, "ro", linewidth=2.0)
+    else:
+        ax1.plot(x, y, "ro", linewidth=2.0)
+    ax1.tick_params(axis='both', which='major', labelsize=20)
+    ax1.set_xlabel(xlabel, fontsize=20)
+    ax1.set_ylabel(ylabel, fontsize=20, color='r')
+    # ax1.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+    offset_text = ax1.yaxis.get_offset_text()
+    offset_text.set_size(20)
+    offset_text.set_color('r')
+    for tl in ax1.get_yticklabels():
+        tl.set_color('r')
+def format_primary_axis(ax,xlabel,ylabel,color,log):
+    ax1.tick_params(axis='both', which='major', labelsize=20)
+    ax1.set_xlabel(xlabel, fontsize=20)
+    ax1.set_ylabel(y1label, fontsize=20, color='r')
+    if not(log):
+        ax1.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+    offset_text = ax1.yaxis.get_offset_text()
+    offset_text.set_size(20)
+    offset_text.set_color(color)
+    for tl in ax1.get_yticklabels():
+        tl.set_color(color)
 
-
-def overlap_axis_plot(ax1, x, y1, y2,  xlabel, y1label, y2label, log):
+def plot_fet(ax1, x, y1, y2,  xlabel, y1label, y2label, log):
     """possible feature duplicate of plot_two_yscales()
     more suitable for scripting"""
     if log:
-        ax1.semilogy(x, y1, "r-", linewidth=2.0)
+        ax1.semilogy(x[:int(len(x)/2)], y1[:int(len(x)/2)], "r-", linewidth=2.0,label="up")
+        ax1.semilogy(x[int(len(x)/2):], y1[int(len(x)/2):], "r--", linewidth=2.0,label='down')
     else:
         ax1.plot(x, y1, "r-", linewidth=2.0)
 
-    ax1.tick_params(axis='both', which='major', labelsize=20)
-
-
-
-    ax1.set_xlabel(xlabel, fontsize=20)
-    ax1.set_ylabel(y1label, fontsize=20, color='r')
-    # ax1.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-    offset_text = ax1.yaxis.get_offset_text()
-
-    offset_text.set_size(20)
-    offset_text.set_color('red')
-    for tl in ax1.get_yticklabels():
-        tl.set_color('r')
+    format_primary_axis(ax1, xlabel, ylabel, 'r', log)
 
     ax2 = ax1.twinx()
     ax2.tick_params(axis='both', which='major', labelsize=20)
@@ -90,6 +103,8 @@ def overlap_axis_plot(ax1, x, y1, y2,  xlabel, y1label, y2label, log):
 
     offset_text.set_size(20)
     offset_text.set_color('blue')
+    ax1.legend(loc='best', fancybox=True, framealpha=0.5,fontsize=20,ncol=1)
+    ax2.legend(loc='best', fancybox=True, framealpha=0.5,fontsize=20,ncol=1)
     for tl in ax2.get_yticklabels():
         tl.set_color('b')
 
@@ -116,8 +131,8 @@ def plot_two_yscales(path, skip=1, delim=",", show=False, save=True, log=False,
     ax1 = plt.subplot(2, 1, 1)
     ax2 = plt.subplot(2, 1, 2)
 
-    overlap_axis_plot(ax1, x, y1, y2,  xlabel, y1label, y2label, True)
-    overlap_axis_plot(ax2, x, y1, y2,  xlabel, y1label, y2label, False)
+    plot_fet(ax1, x, y1, y2,  xlabel, y1label, y2label, True)
+    plot_fet(ax2, x, y1, y2,  xlabel, y1label, y2label, False)
 
     fig.suptitle(title, fontsize=20)
     # plt.tight_layout()
@@ -144,8 +159,9 @@ def plot_folder(folder, xlabel="$V_G$", y1label="$I_{DS}$", y2label="$I_{G}$"):
         ax1 = plt.subplot(2, 1, 1)
         ax2 = plt.subplot(2, 1, 2)
 
-        overlap_axis_plot(ax1, data[:,0], data[:,2], data[:,3],  xlabel, y1label, y2label, True)
-        overlap_axis_plot(ax2, data[:,0], data[:,2], data[:,3],  xlabel, y1label, y2label, False)
+        plot_fet(ax1, data[:,0], data[:,2], data[:,3],  xlabel, y1label, y2label, True)
+        ax1.plot(data[0,0],data[0,2],'go')
+        plot_fet(ax2, data[:,0], data[:,2], data[:,3],  xlabel, y1label, y2label, False)
 
         fig.tight_layout()
         fig.subplots_adjust(top=1.5)
