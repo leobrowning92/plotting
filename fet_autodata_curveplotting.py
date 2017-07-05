@@ -1,3 +1,10 @@
+"""
+Author: Leo Browning
+
+Script contains functions for the plotting of data as collected
+by my automated Parameter analyser scripts
+"""
+
 from plotting_fns import format_primary_axis,checkdir
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -9,6 +16,11 @@ def timeStampYMDH():
     return time.strftime('%Y_%m_%d_%H%M')
 
 def plotchip(directory,number):
+    """
+    This function simply plots all data from a chip, and whacks it in seperate
+    plots inside a figure. The figures are saved individually in the
+    /plots subdir of the parent directory.
+    """
     fnames=glob.glob("{}data/*COL{}*".format(directory,number))
     if fnames==[]:
         return False
@@ -55,10 +67,13 @@ def plot_all(directory, start, stop, search,show=True,save=False):
     if show:
         plt.show()
     if save:
-        fig.savefig(os.path.join(directory,"{}_{}-{}_plots_{}.png".format(search,start,stop,timeStampYMDH())), bbox_inches='tight')
+        fig.savefig(os.path.join(directory,"{}_{}-{}_plots.png".format(search,start,stop)), bbox_inches='tight')
     plt.close(fig)
 
 def plot_all_prepost(predirectory, postdirectory, search, show= True, save=True):
+    """
+    plots all of the data post encapsulation, for a given sweep type defined by search, against the equivalent data pre SU8 if that data exists
+    """
     prepaths =  glob.glob(os.path.join(predirectory+"data", "*{}*".format( search)))
     prepaths.sort()
     postpaths =  glob.glob(os.path.join(postdirectory+"data", "*{}*".format( search)))
@@ -79,7 +94,7 @@ def plot_all_prepost(predirectory, postdirectory, search, show= True, save=True)
     if show:
         plt.show()
     if save:
-        fig.savefig(os.path.join("prepost_SU8-{}_plots_{}.png".format(search,timeStampYMDH())), bbox_inches='tight')
+        fig.savefig(os.path.join("prepost_SU8-{}_plots.png".format(search)), bbox_inches='tight')
     plt.close(fig)
 
 
@@ -87,7 +102,7 @@ def plot_all_prepost(predirectory, postdirectory, search, show= True, save=True)
 
 
 if __name__ == "__main__":
-    assert len(sys.argv) in [4,5], "this scritpt takes 3 arguments of a folder name and a start and stop chip index {} were given".format(len(sys.argv)-1)
+    assert len(sys.argv) in [4,5], "this script takes 3 arguments of a folder name and a start and stop chip index {} were given".format(len(sys.argv)-1)
 
     if sys.argv[1]=="prepost":
         plot_all_prepost(sys.argv[2], sys.argv[3],sys.argv[4])
