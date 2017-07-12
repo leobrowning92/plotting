@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import modules.PAplot as PAplot
 import os
 import modules.cleandata as cleandata
