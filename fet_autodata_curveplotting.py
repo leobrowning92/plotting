@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 """
 Author: Leo Browning
 
@@ -105,7 +106,7 @@ if __name__ == "__main__":
     assert len(sys.argv) in [4,5], "this script takes 3 arguments of a folder name and a start and stop chip index {} were given".format(len(sys.argv)-1)
 
     if sys.argv[1]=="prepost":
-        plot_all_prepost(sys.argv[2], sys.argv[3],sys.argv[4])
+        plot_all_prepost(sys.argv[2], sys.argv[3],sys.argv[4], show=True, save=False)
     elif len(sys.argv)==4:
         # plots all the data for each chip in the given range
         for i in range(int(sys.argv[2]),int(sys.argv[3])+1):

@@ -6,7 +6,7 @@ def checkdir(directoryname):
         os.system("mkdir " + directoryname)
     pass
 
-def format_primary_axis(ax,xlabel="",ylabel="",color="k",sci=True,fontsize=20,title=""):
+def format_primary_axis(ax, xlabel="", ylabel="", color="k", sci=True, fontsize=20, title=""):
     ax.tick_params(axis='both', which='major', labelsize=20)
     ax.set_xlabel(xlabel, fontsize=fontsize)
     ax.set_ylabel(ylabel, fontsize=fontsize, color=color)

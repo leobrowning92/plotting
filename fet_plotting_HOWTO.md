@@ -16,11 +16,6 @@ ensure directory structure is as follows in this example:
     ├── postSD-autodata
     │   ├── data
     │   └── plots
-    ├── postSD-manualdata
-    │   └── data
-    ├── postSD-redo-485
-    │   ├── data
-    │   └── plots
     └── postSU8-autodata
         ├── data
         └── plots
