@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # renames all the output of the outomated file collection from the PA
 rename -v 's/run001/run002/' $1*VG20VDS0.1*
 rename -v 's/run001/run003/' $1*VG10VDS0.01*

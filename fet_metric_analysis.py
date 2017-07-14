@@ -5,11 +5,12 @@ Author: Leo Browning
 Script contains funcitons to plot metrics from collections of FET data
 """
 
-import os,glob,re,sys,time
+import os,glob,re,sys,time argparse
 import pandas as pd
 import numpy as np
-import PAplot
 import matplotlib.pyplot as plt
+import PAplot
+
 
 def timeStampYMDH():
     # -> 'YYYY_MM_DD_HHMM' as a time stamp
