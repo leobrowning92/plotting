@@ -8,14 +8,41 @@ by my automated Parameter analyser scripts
 
 import glob, re, os, sys, time, argparse
 import matplotlib.pyplot as plt
+from IPython import embed
 import pandas as pd
 import numpy as np
+import seaborn as sns
 from plotting_fns import format_primary_axis,checkdir
 
+##############   Helper Functions   #####################
+# Functions for pulling important information out of filename strings
+def find_deptime(fname):
+    """returns the deptime in minutes from the filename"""
+    if 'hrdep' in fname:
+        return int(re.search('(\d)hrdep', fname, flags=re.IGNORECASE).group(1))*60
+    elif 'mindep' in fname:
+        return int(re.search('(\d)mindep', fname, flags=re.IGNORECASE).group(1))
+    else: return np.nan
 
-def timeStampYMDH():
-    # -> 'YYYY_MM_DD_HHMM' as a time stamp
-    return time.strftime('%Y_%m_%d_%H%M')
+def find_parameters(fname):
+    try:return re.search('(VG\d*\dVDS\d*.\d*)',fname).group(1)
+    except: return np.nan
+
+def find_fabstep(fname):
+    try:return re.search('dep(.[^_]*)',fname).group(1)
+    except:return np.nan
+
+def find_numsweeps(fname):
+    try:return re.search('x(\d*)',fname).group(1)
+    except: return 1
+
+def get_info(df):
+    print("dataframe contains {} datapoints across {} runs".format(df.shape[0],len(df.index.levels[0])))
+    print("the columns are: \n{}".format(list(df)))
+
+def get_runID(fname):
+    return fname[-19:-5].replace('_','')
+
 
 def plotchip(directory,number,v=True,display=True,save=True):
     """
@@ -107,34 +134,118 @@ def plot_all_prepost(predirectory, postdirectory, search, display= True, save=Tr
         fig.savefig(os.path.join("prepost_SU8-{}_plots.png".format(search)), bbox_inches='tight')
     plt.close(fig)
 
+####Tiling code
+def load_to_dataframe(directory,v=True):
+    fnames = glob.glob(os.path.join(directory[0],"data/*"))
+    if len(directory)>1:
+        for i in range(1,len(directory)):
+            fnames=fnames+glob.glob(os.path.join(directory[i],"data/*"))
+    fnames.sort()
+
+    # process fnames
+    frames= [ pd.read_csv(fname) for fname in fnames ]
+    # sets index to fname and concatenates dataset
+    df=pd.concat(frames,keys=[os.path.basename(fname) for fname in fnames])
+    # moves the fname to a column
+    df['fname']=df.index
+
+
+    #makes columns for the various parameters held in the filename
+    df['fname']=df.fname.apply(lambda x:x[0])
+    df['chip']= df['fname'].apply(lambda x:int(x[3:6]) )
+    df['device']= df['fname'].apply(lambda x:x[3:9] )
+    df['deptime']=df['fname'].apply(find_deptime)
+    df['fabstep'] = df['fname'].apply(find_fabstep)
+    df['parameters'] = df['fname'].apply(find_parameters)
+    df['multi'] = df['fname'].apply(find_numsweeps)
+    df.drop(['fname'],axis=1,inplace=True)
+    # # resets the index to a unique identifier for a datarun
+    df.index = pd.MultiIndex.from_tuples([(get_runID(x[0]), x[1]) for x in df.index])
+    # #prints information about the dataframe
+    if v:
+        print("dataframe after load_to_dataframe()")
+        get_info(df)
+    return df
+
+def mask_data(df,column,tag):
+    data=df
+    mask=data[column].isin([tag])
+    return mask
+def filter_data(df,column=["parameters",'multi'],tags=['VG10VDS0.01',1]):
+    """filters the data in the parameter column by the filter value"""
+    assert len(column)==len(tags), "number of columns and search parameters must match"
+    assert type(column)==list
+    assert type(tags)==list
+    data=df
+    total_mask=mask_data(data, column[0], tags[0])
+    if len(column)!=1:
+        for i in range(1,len(column)):
+            total_mask=total_mask & mask_data(df, column[i], tags[i])
+    data=data[total_mask]
+    return data
+def match_data(df,column='fabstep',match='postSU8'):
+    """filters the data by all runs on devices that have the match characteristic
+    in their parameter column"""
+    data=df
+    ls=data[data[column].isin([match])]['device']
+    data=data[data['device'].isin(ls)]
+    return data
+def tile_data(df,tile="device",color="fabstep",show=True,save=False,v=False):
+    #Seaborn plotting example
+    if v:
+        print("dataframe pre tile_data()")
+        get_info(df)
+    sns.set(style="ticks",palette='hls')
+    # Initialize a grid of plots with an Axes for each walk
+    grid = sns.FacetGrid(df, col=tile, hue=color, col_wrap=2, size=3)
+    # Draw a line plot to show the trajectory of each random walk
+    grid.map(plt.semilogy, "VG", "ID").add_legend()
+    # Adjust the tick positions and labels
+    grid.set(xlim=(-10, 10), ylim=(1e-11, 1e-7))
+    # Adjust the arrangement of the plots
+    grid.fig.tight_layout(w_pad=1)
+
+    if show:
+        plt.show()
+    if save:
+        plt.savefig
+    plt.close()
 
 
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description="""Description of the various functions available:\n    plotall - plots all data for each chip on a seperate plot and store in subdir plots/ \n    collect - plots all data of a type specified by search on a single plot""")
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description="""Description of the various functions available:\n    plotall - plots all data for each chip on a seperate plot and store in subdir plots/ \n    collect - plots all data of a type specified by search on a single plot\n    tile - used with the -i flag to open an interactive session which allows exploration of the data""")
 
-    parser.add_argument("function", type=str, choices=["plotall","collect"],
+    parser.add_argument("function", type=str, choices=["plotall", "collect", "tile"],
         help="what plotting function to use: %(choices)s")
-    parser.add_argument("directory",type=str, help="The directory containing the data folder to analyse")
+    parser.add_argument("directory",type=str, help="The directory containing the data folder to analyse",nargs='+')
 
-    parser.add_argument("start", type=int, help="Start of chip index")
-    parser.add_argument("stop", type=int, help="end (inclusive) of chip index")
+    parser.add_argument("--start", type=int, help="Start of chip index")
+    parser.add_argument("--stop", type=int, help="end (inclusive) of chip index")
 
     #Flags
     parser.add_argument("--show", action="store_true")
     parser.add_argument("-s", "--save", action="store_true")
-    parser.add_argument("-v", "--verbose", action="store_true")
-    #optional Arguments
-    parser.add_argument("--dir2", help="A second directory to compare against the first",action="store")
+    parser.add_argument("-v", "--verbose", action="store_true",default=False)
+    parser.add_argument("-i","--interactive",action="store_true", help="If applicable opens up an ipython terminal")
+
     parser.add_argument("--search", help="Search string to filter the filenames by.",action="store")
-
-
-
-
     args = parser.parse_args()
+    if args.function=="tile":
+        df=load_to_dataframe(args.directory,v=args.verbose)
+
+        if args.interactive:
+            embed()
+        else:
+            df=filter_data(df)
+            df=match_data(df)
+            tile_data(df,v=args.verbose)
+
     if args.function=="plotall":
+        assert len(args.directory)==1, "this function takes only one directory"
         for i in range(args.start,args.stop+1):
-            plotchip(args.directory, i,save=args.s,show=args.d,v=args.v)
+            plotchip(args.directory[0], i,save=args.s,show=args.d,v=args.verbose)
     if args.function=="collect":
-        plot_all(args.directory,args.start,args.stop,args.search, save=args.s,show=args.d)
+        assert len(args.directory)==1, "this function takes only one directory"
+        plot_all(args.directory[0],args.start,args.stop,args.search, save=args.s,show=args.d)
