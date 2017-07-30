@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 """
 Author: Leo Browning
 
@@ -6,7 +6,7 @@ Script contains functions for the plotting of data as collected
 by my automated Parameter analyser scripts
 """
 
-import glob, re, os, sys, time, argparse, hashlib
+import glob, re, os, sys, time, argparse, hashlib, textwrap
 import matplotlib.pyplot as plt
 from IPython import embed
 import pandas as pd
@@ -120,35 +120,12 @@ def plot_all(directory, start, stop, search,display=True,save=False):
         fig.savefig(os.path.join(directory,"{}_{}-{}_plots.png".format(search,start,stop)), bbox_inches='tight')
     plt.close(fig)
 
-def plot_all_prepost(predirectory, postdirectory, search, display= True, save=True):
-    """
-    plots all of the data post encapsulation, for a given sweep type defined by search, against the equivalent data pre SU8 if that data exists
-    """
-    prepaths =  glob.glob(os.path.join(predirectory+"data", "*{}*".format( search)))
-    prepaths.sort()
-    postpaths =  glob.glob(os.path.join(postdirectory+"data", "*{}*".format( search)))
-    postpaths.sort()
 
-    fig = plt.figure(figsize=(8, 20), facecolor="white")
-    axes=[plt.subplot(5,2,i+1) for i in range(len(postpaths))]
-
-
-    for i  in range(len(postpaths)):
-        postdata=pd.read_csv(postpaths[i])
-        axes[i].semilogy(postdata["VG"],postdata["ID"],label=os.path.basename(postpaths[i])[:9]+"post",linewidth=3)
-        for prepath in prepaths:
-            if os.path.basename(postpaths[i])[:17] == os.path.basename(prepath)[:17]:
-                predata=pd.read_csv(prepath)
-                axes[i].semilogy(predata["VG"],predata["ID"],label=os.path.basename(postpaths[i])[:9]+"pre",linewidth=3)
-        format_primary_axis(axes[i],xlabel="VG (V)", ylabel="ID (A)",title="{} \n {}".format(os.path.basename(postpaths[i])[:9], search), sci=False,fontsize=10)
-    if display:
-        plt.show()
-    if save:
-        fig.savefig(os.path.join("prepost_SU8-{}_plots.png".format(search)), bbox_inches='tight')
-    plt.close(fig)
 
 ####Tiling code
 def load_to_dataframe(directory,v=True):
+    if v:
+        print("loading data from {}".format(directory))
     fnames = glob.glob(os.path.join(directory,"data/*"))
     if len(directory)>1:
         for i in range(1,len(directory)):
@@ -181,7 +158,7 @@ def load_to_dataframe(directory,v=True):
     df.reset_index(drop=True,inplace=True)
     #prints information about the dataframe
     if v:
-        print("dataframe after load_to_dataframe()")
+        print("dataframe from {} after load_to_dataframe()".format(directory))
         get_info(df)
     return df
 
@@ -217,7 +194,7 @@ def match_data(df,column='fabstep',match='postSU8'):
     data=data[data['device'].isin(ls)]
     return data
 
-def tile_data(df, column="device",row=None, colwrap=2, color="fabstep", show=True, save=False, v=False,  xlim="", ylim="", sharey=True):
+def tile_data(df, column="parameters",row='device', colwrap=None, color="fabstep", show=True, save=False, v=False,  xlim="", ylim="", sharey=True):
     #Seaborn plotting example
     if v:
         print("dataframe pre tile_data()")
@@ -250,7 +227,11 @@ def tile_data(df, column="device",row=None, colwrap=2, color="fabstep", show=Tru
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description="""Description of the various functions available:\n    plotall - plots all data for each chip on a seperate plot and store in subdir plots/ \n    collect - plots all data of a type specified by search on a single plot\n    tile - used with the -i flag to open an interactive session which allows exploration of the data""")
+    parser = argparse.ArgumentParser( formatter_class=argparse.RawDescriptionHelpFormatter, description=textwrap.dedent("""\
+            Description of the various functions available:
+                plotall   -  plots all data for each chip on a seperate plot and store in subdir plots/
+                collect   -  plots all data of a type specified by search on a single plot
+                tile      -  used with the -i flag to open an interactive session which allows exploration of the data"""))
 
     parser.add_argument("function", type=str, choices=["plotall", "collect", "tile"],
         help="what plotting function to use: %(choices)s")
@@ -267,14 +248,16 @@ if __name__ == "__main__":
 
     parser.add_argument("--search", help="Search string to filter the filenames by.",action="store")
     args = parser.parse_args()
+    if args.verbose:
+        print("directories loaded : {}".format(args.directory))
     if args.function=="tile":
         df=pd.concat([load_to_dataframe(directory,v=args.verbose) for directory in args.directory])
 
         if args.interactive:
             embed()
         else:
-            df=filter_data(df)
-            df=match_data(df)
+            # df=filter_data(df)
+            # df=match_data(df)
             tile_data(df,v=args.verbose,show=args.show,save=args.save)
 
     if args.function=="plotall":
