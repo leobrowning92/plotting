@@ -46,8 +46,9 @@ def process_points(fname,save=False, show=True):
     g.set_xlabel("Junction Density $/\mu m^2$")
     g.set_ylabel("Count")
     if save:
-        plat.savefig(fname[:-4]+"_plots.png")
-    plt.show()
+        plt.savefig(fname[:-4]+"_plots.png")
+    if show:
+        plt.show()
 
 
 
@@ -69,4 +70,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     for fname in args.files:
         assert fname[-4:]==".txt", "incorrect filetype"
-        process_points(fname)
+        process_points(fname,save=args.save,show=args.show)

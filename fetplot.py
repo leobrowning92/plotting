@@ -8,11 +8,16 @@ by my automated Parameter analyser scripts
 
 import glob, re, os, sys, time, argparse, hashlib, textwrap
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use("TkAgg")
 from IPython import embed
 import pandas as pd
 import numpy as np
 import seaborn as sns
 from plotting_fns import format_primary_axis,checkdir
+import matplotlib
+matplotlib.use("TkAgg")
+
 ############## COLORS ###################################
 
 divergent=sns.color_palette(["#3778bf", "#feb308", "#441830", "#c13838", "#2f6830"])
@@ -38,7 +43,12 @@ def find_parameters(fname):
 def find_fabstep(fname):
     try:return re.search('dep(.[^_]*)',fname).group(1)
     except:return "fabstepERROR"
-
+def find_sweep(fname):
+    if "transfer" in fname:
+        return 'transfer'
+    elif 'output' in fname:
+        return 'output'
+    else: return 'sweepERROR'
 def find_numsweeps(fname):
     try:return re.search('x(\d*)',fname).group(1)
     except: return 1
@@ -57,106 +67,76 @@ def find_gate(fname):
     except: return "backgate"
 
 
-def plotchip(directory,number,v=True,show=True,save=True):
+def plotchips(directory,v=True,show=True,save=True):
     """
     This function simply plots all data from a chip, and whacks it in seperate
     plots inside a figure. The figures are saved individually in the
     /plots subdir of the parent directory.
     """
-    fnames=glob.glob("{}data/*COL{}*".format(directory,number))
-    if fnames==[]:
-        if v:
-            print(" no data for:COL{}".format(number))
-        return False
-    fnames.sort()
-    if v:
-        print("plotting {} datasets for chip {}".format(len(fnames),number))
-    fig = plt.figure(figsize=(16, 4), facecolor="white")
-    axes=[]
-    for i in range(len(fnames)):
-        axes.append(plt.subplot(len(fnames)//6,len(fnames)//2,i+1))
-
-    for i in range(len(fnames)):
-        if "output" in fnames[i]:
-            data=pd.read_csv(fnames[i])
-            axes[i].plot(data["VDS"],data["ID"], label="", linewidth=2)
-            format_primary_axis(axes[i],"","","k",True,10)
-        else:
-            data=pd.read_csv(fnames[i])
-            axes[i].semilogy(data["VG"],data["ID"], label="", linewidth=2)
-            format_primary_axis(axes[i],"","","k",False,10)
-
     checkdir(os.path.join(directory,"plots"))
-    if save:
-        plt.savefig("{}plots/COL{}_plot.png".format(directory,number))
-    if show:
-        plt.show()
+    df=load_to_dataframe(directory,v=v)
+    for n in set(df.chip):
+        try:
+            if v:
+                print("plotting data for COL{}".format(n))
+            tile_data(df[(df.chip == n)&(df.sweep == 'transfer')], column="parameters", row='device',color='gate',  save="{}plots/COL{}_transferplot".format(directory,n), show=show,sharey=False)
+            tile_data(df[(df.chip == n)&(df.sweep == 'output')],column=None,row='device',color=None, save="{}plots/COL{}_outputplot".format(directory,n),show=show, x="VDS",log=False)
+        except Exception as e:
+            print(e)
+            print("failed to plot data from these files:\n{}".format(set(df[df.chip == n].fname)))
 
-def plot_all(directory, start, stop, search,display=True,save=False):
-    """
-    plots all of the data off a certain type across chips in a folder to
-    compare the data across chips
-    specifically designed to work for batches of 5 chips with
-    2 devices per chip
-    """
-    filepaths =  glob.glob(os.path.join(directory+"/data", "*{}*".format( search)))
-    newpaths=[]
-    for index in range(int(start), int(stop)+1):
-        for path in filepaths:
-            if str(index) in path:
-                newpaths.append(path)
-    newpaths.sort()
-    fig = plt.figure(figsize=(10, 8), facecolor="white")
-    ax=plt.subplot(111)
-    ax.set_color_cycle([plt.cm.Paired(i) for i in np.linspace(0, 0.8, len(newpaths))])
-    for fname in newpaths:
-        data=pd.read_csv(fname)
-        ax.semilogy(data["VG"],data["ID"],label=os.path.basename(fname)[:9],linewidth=3)
 
-    format_primary_axis(ax,xlabel="VG (V)", ylabel="ID (A)",title="COL{} -{} {}".format(start,stop,search), sci=False)
-    if display:
-        plt.show()
-    if save:
-        fig.savefig(os.path.join(directory,"{}_{}-{}_plots.png".format(search,start,stop)), bbox_inches='tight')
-    plt.close(fig)
+
 
 
 
 ####Tiling code
-def load_to_dataframe(directory,v=True):
-    if v:
-        print("loading data from {}".format(directory))
-    fnames = glob.glob(os.path.join(directory,"data/*"))
-    if len(directory)>1:
-        for i in range(1,len(directory)):
-            fnames=fnames+glob.glob(os.path.join(directory[i],"data/*"))
-    fnames.sort()
+def load_to_dataframe(directory,v=True,force=True):
+    if force==False and os.path.isfile(os.path.join(directory,"dataframe.h5")):
+        try:
+            print("loading dataframe from database in {}".format(directory))
+            store =pd.HDFStore(os.path.join(directory,"dataframe.h5"))
+            df=store['df']
+        except Exception as e:
+            print(e)
+            print("there was an error loading the database")
+    else:
+        print("loading data from source files in {}".format(directory))
+        fnames = glob.glob(os.path.join(directory,"data/COL*"))
+        if len(directory)>1:
+            for i in range(1,len(directory)):
+                fnames=fnames+glob.glob(os.path.join(directory[i],"data/COL*"))
+        fnames.sort()
 
-    # process fnames
-    frames= [ pd.read_csv(fname) for fname in fnames ]
-    # sets index to fname and concatenates dataset
+        # process fnames
+        frames= [ pd.read_csv(fname) for fname in fnames ]
+        # sets index to fname and concatenates dataset
 
-    df=pd.concat(frames,keys=[os.path.basename(fname) for fname in fnames])
-    # moves the fname to a column
-    df['temp']=df.index
+        df=pd.concat(frames,keys=[os.path.basename(fname) for fname in fnames])
+        # moves the fname to a column
+        df['temp']=df.index
 
 
-    #makes columns for the various parameters held in the filename
-    df['temp']=df['temp'].apply(lambda x:x[0])
-    df['chip']= df['temp'].apply(lambda x:int(x[3:6]) )
-    df['device']= df['temp'].apply(lambda x:x[3:9] )
-    df['deptime']=df['temp'].apply(find_deptime)
-    df['fabstep'] = df['temp'].apply(find_fabstep)
-    df['parameters'] = df['temp'].apply(find_parameters)
-    df['multi'] = df['temp'].apply(find_numsweeps)
-    df['gate'] = df['temp'].apply(find_gate)
-    df['timestamp']=df['temp'].apply(get_timestamp)
-    df['uuid']=df['temp'].apply(get_runID)
-    df['fname']=df['temp']
-    df.drop(['temp'],axis=1,inplace=True)
-    # resets the index to a unique identifier for a datarun
-    df.reset_index(drop=True,inplace=True)
-    #prints information about the dataframe
+        #makes columns for the various parameters held in the filename
+        df['temp']=df['temp'].apply(lambda x:x[0])
+        df['chip']= df['temp'].apply(lambda x:int(x[3:6]) )
+        df['device']= df['temp'].apply(lambda x:x[3:9] )
+        df['deptime']=df['temp'].apply(find_deptime)
+        df['fabstep'] = df['temp'].apply(find_fabstep)
+        df['parameters'] = df['temp'].apply(find_parameters)
+        df['multi'] = df['temp'].apply(find_numsweeps)
+        df['gate'] = df['temp'].apply(find_gate)
+        df['sweep'] = df['temp'].apply(find_sweep)
+        df['timestamp']=df['temp'].apply(get_timestamp)
+        df['uuid']=df['temp'].apply(get_runID)
+        df['fname']=df['temp']
+        df.drop(['temp'],axis=1,inplace=True)
+        # resets the index to a unique identifier for a datarun
+        df.reset_index(drop=True,inplace=True)
+        #prints information about the dataframe
+        store = pd.HDFStore(os.path.join(directory,"dataframe.h5"))
+        store['df'] = df
+
     if v:
         print("dataframe from {} after load_to_dataframe()".format(directory))
         get_info(df)
@@ -194,7 +174,7 @@ def match_data(df,column='fabstep',match='postSU8'):
     data=data[data['device'].isin(ls)]
     return data
 
-def tile_data(df, column="parameters",row='device', colwrap=None, color="fabstep", show=True, save=False, v=False,  xlim="", ylim="", sharey=True):
+def tile_data(df, column="parameters",row='device', colwrap=None, color="fabstep", show=True, save=False, v=False,  xlim="", ylim="", sharey=True, x="VG", y="ID",log=True):
     #Seaborn plotting example
     if v:
         print("dataframe pre tile_data()")
@@ -203,7 +183,10 @@ def tile_data(df, column="parameters",row='device', colwrap=None, color="fabstep
     # Initialize a grid of plots with an Axes for each walk
     grid = sns.FacetGrid(df, col=column, hue=color,row=row, col_wrap=colwrap, size=4,sharey=sharey)
     # Draw a line plot to show the trajectory of each random walk
-    grid.map(plt.semilogy, "VG", "ID").add_legend()
+    if log:
+        grid.map(plt.semilogy, x, y).add_legend()
+    else:
+        grid.map(plt.plot, x, y).add_legend( )
     # Adjust the tick positions and labels
     if xlim=='':
         pass
@@ -214,8 +197,8 @@ def tile_data(df, column="parameters",row='device', colwrap=None, color="fabstep
     else:
         grid.set(ylim=ylim)
     # Adjust the arrangement of the plots
-    grid.fig.tight_layout(w_pad=1)
-
+    # grid.fig.tight_layout(w_pad=1)
+    plt.legend(["          "], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
     if show:
         plt.show()
     if save:
@@ -245,13 +228,14 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--save", action="store_true")
     parser.add_argument("-v", "--verbose", action="store_true",default=False)
     parser.add_argument("-i","--interactive",action="store_true", help="If applicable opens up an ipython terminal")
+    parser.add_argument("-f",'--force',action="store_true",help="Forces reloading the data from the source data")
 
     parser.add_argument("--search", help="Search string to filter the filenames by.",action="store")
     args = parser.parse_args()
     if args.verbose:
         print("directories loaded : {}".format(args.directory))
     if args.function=="tile":
-        df=pd.concat([load_to_dataframe(directory,v=args.verbose) for directory in args.directory])
+        df=pd.concat([load_to_dataframe(directory, v=args.verbose, force=args.force) for directory in args.directory])
 
         if args.interactive:
             embed()
@@ -262,8 +246,7 @@ if __name__ == "__main__":
 
     if args.function=="plotall":
         assert len(args.directory)==1, "this function takes only one directory"
-        for i in range(args.start,args.stop+1):
-            plotchip(args.directory[0], i,save=args.save,show=args.show,v=args.verbose)
+        plotchips(args.directory[0], save=args.save, show=args.show, v=args.verbose)
     if args.function=="collect":
         assert len(args.directory)==1, "this function takes only one directory"
         plot_all(args.directory[0],args.start,args.stop,args.search, save=args.s,show=args.d)
