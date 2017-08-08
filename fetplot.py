@@ -94,6 +94,13 @@ def plotchips(directory,v=True,show=True,save=True,force=False):
             print(e)
             print("failed to plot data from these files:\n{}".format(set(df[df.chip == n].fname)))
 
+def get_metrics(df):
+    df['IGmax']=max(df["IG"])
+    df['IDmax']=max(df["ID"])
+    df['IDmin']=min(df["ID"])
+    df['ONOFF']=df['IDmax']/df['IDmin']
+    return df
+
 
 
 
@@ -102,7 +109,7 @@ def plotchips(directory,v=True,show=True,save=True,force=False):
 def load_to_dataframe(directory,v=True,force=True):
     if force==False and os.path.isfile(os.path.join(directory,"dataframe.h5")):
         try:
-            print("loading dataframe from database in {}".format(directory))
+            print("loading dataframe from HDF5 file in {}".format(directory))
             store =pd.HDFStore(os.path.join(directory,"dataframe.h5"))
             df=store['df']
         except Exception as e:
@@ -117,7 +124,7 @@ def load_to_dataframe(directory,v=True,force=True):
         fnames.sort()
         mean,std=load_AFMdensities()
         # process fnames
-        frames= [ pd.read_csv(fname) for fname in fnames ]
+        frames= [ get_metrics(pd.read_csv(fname)) for fname in fnames ]
         # sets index to fname and concatenates dataset
         df=pd.concat(frames,keys=[os.path.basename(fname) for fname in fnames])
         # moves the fname to a column
@@ -189,8 +196,8 @@ def updownplot(x,y,**kwargs):
 
 
 ############### Core Tiled data function ###########
-def tile_data(df, column="parameters",row='device', colwrap=None, color="fabstep", show=True, save=False, v=False,  xlim="", ylim="", sharey=True, x="VG", y="ID", log=True, updown=False, palette=divergent, col_order=None, hue_order=None):
-    #Seaborn plotting example
+def tile_data(df, column="parameters",row='device', color="fabstep",
+            colwrap=None,  show=True, save=False, v=False,  xlim="", ylim="", sharey=True, x="VG", y="ID", log=True, updown=False, palette=divergent, col_order=None, hue_order=None, ls='-',marker=''):
     if v:
         print("dataframe pre tile_data()")
         get_info(df)
@@ -199,11 +206,11 @@ def tile_data(df, column="parameters",row='device', colwrap=None, color="fabstep
     grid = sns.FacetGrid(df, col=column, hue=color,row=row, col_wrap=colwrap, size=4,sharey=sharey, col_order=col_order, hue_order=hue_order)
     # Draw a line plot to show the trajectory of each random walk
     if updown:
-        grid.map(updownplot, x, y).add_legend()
+        grid.map(updownplot, x, y,ls=ls,marker=marker).add_legend()
     elif log and not(updown):
-        grid.map(plt.semilogy, x, y).add_legend()
+        grid.map(plt.semilogy, x, y,ls=ls,marker=marker).add_legend()
     else:
-        grid.map(plt.plot, x, y).add_legend( )
+        grid.map(plt.plot, x, y,ls=ls,marker=marker).add_legend( )
     # Adjust the tick positions and labels
     if xlim=='':
         pass
@@ -245,6 +252,11 @@ def single_topgate(df,plot=False):
         tile_data(data, column='device',row=None, color='gate', save='VG20VDS0.1_490_2_topgate', sharey=False)
     else:
         return data
+def metric_plot(df,p1,p2,show=True,save=False):
+    data = df[(df.parameters=='VG20VDS0.1')]
+    tile_data(data.drop_duplicates(subset=[p1,p2]),column=None,row=None,x=p1,y=p2,ls='',marker='o',show=show,save=save)
+
+
 
 
 
@@ -254,26 +266,28 @@ if __name__ == "__main__":
             Description of the various functions available:
                 plotall   -  plots all data for each chip on a seperate plot and store in subdir plots/
                 collect   -  plots all data of a type specified by search on a single plot
-                tile      -  used with the -i flag to open an interactive session which allows exploration of the data"""))
+                tile      -  used with the -i flag to open an interactive session which allows exploration of the data
+                test      -  simply loads datasets use -i for interactive and -f to force reload"""))
 
+    # required arguments
     parser.add_argument("function", type=str, choices=["plotall", "collect", "tile","test"],
         help="what plotting function to use: %(choices)s")
     parser.add_argument("directory",type=str, help="The directory containing the data folder to analyse",nargs='+')
 
+    # optional flags
     parser.add_argument("--start", type=int, help="Start of chip index")
     parser.add_argument("--stop", type=int, help="end (inclusive) of chip index")
-
-    #Flags
     parser.add_argument("--show", action="store_true")
     parser.add_argument("-s", "--save", action="store_true")
     parser.add_argument("-v", "--verbose", action="store_true",default=False)
     parser.add_argument("-i","--interactive",action="store_true", help="If applicable opens up an ipython terminal")
     parser.add_argument("-f",'--force',action="store_true",help="Forces reloading the data from the source data")
-
     parser.add_argument("--search", help="Search string to filter the filenames by.",action="store")
     args = parser.parse_args()
     if args.verbose:
         print("directories loaded : {}".format(args.directory))
+
+    #run funcitons
     if args.function=="tile":
         df=pd.concat([load_to_dataframe(directory, v=args.verbose, force=args.force) for directory in args.directory])
 
@@ -283,7 +297,6 @@ if __name__ == "__main__":
             # df=filter_data(df)
             # df=match_data(df)
             tile_data(df,v=args.verbose,show=args.show,save=args.save)
-
     if args.function=="plotall":
         assert len(args.directory)==1, "this function takes only one directory"
         plotchips(args.directory[0], save=args.save, show=args.show, v=args.verbose,force=args.force)
