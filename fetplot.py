@@ -8,8 +8,6 @@ by my automated Parameter analyser scripts
 
 import glob, re, os, sys, time, argparse, hashlib, textwrap
 import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use("TkAgg")
 from IPython import embed
 import pandas as pd
 import numpy as np
@@ -22,6 +20,8 @@ matplotlib.use("TkAgg")
 
 divergent=sns.color_palette(["#3778bf", "#feb308", "#7F2C5A", "#c13838", "#2f6830"])
 hls=sns.color_palette("hls", 8)
+fab_order=['postSD','postSU8','postTop']
+six=sns.cubehelix_palette(6, start=1.5, rot=-1,light=0.5,dark=0.2)
 
 
 ##############   Helper Functions   #####################
@@ -71,8 +71,15 @@ def load_AFMdensities(directory='AFM_densities'):
     densities={os.path.basename(x)[7:13]:float(pd.read_csv(x)['1uMean'][0]) for x in fnames}
     deviations ={os.path.basename(x)[7:13]:float(pd.read_csv(x)['1uStd'][0]) for x in fnames}
     return densities,deviations
-def dictsub(x,dictionary):
-    return dictionary[x]
+def get_metrics(df):
+    df['IGmax']=max(df["IG"])
+    df['IDmax']=max(df["ID"])
+    df['IDmin']=min(df["ID"])
+    df['ONOFF']=df['IDmax']/df['IDmin']
+    return df
+def gate_area(gate):
+    areas={"backgate":3600,"topgate1":600,"topgate2":200,"topgate3":200,"topgate4":600}
+    return areas[gate]
 
 ############### Plotting Functions ######################
 
@@ -88,18 +95,13 @@ def plotchips(directory,v=True,show=True,save=True,force=False):
         try:
             if v:
                 print("plotting data for COL{}".format(n))
-            tile_data(df[(df.chip == n)&(df.sweep == 'transfer')], column="parameters", row='device',color='gate',  save="{}plots/COL{}_transferplot".format(directory,n), show=show,sharey=False)
+            tile_data(df[(df.chip == n)&(df.sweep == 'transfer')], column="parameters", row='device',color='fabstep',  save="{}plots/COL{}_transferplot".format(directory,n), show=show,sharey=False)
             tile_data(df[(df.chip == n)&(df.sweep == 'output')],column=None,row='device',color=None, save="{}plots/COL{}_outputplot".format(directory,n),show=show, x="VDS",log=False)
         except Exception as e:
             print(e)
             print("failed to plot data from these files:\n{}".format(set(df[df.chip == n].fname)))
 
-def get_metrics(df):
-    df['IGmax']=max(df["IG"])
-    df['IDmax']=max(df["ID"])
-    df['IDmin']=min(df["ID"])
-    df['ONOFF']=df['IDmax']/df['IDmin']
-    return df
+
 
 
 
@@ -136,8 +138,9 @@ def load_to_dataframe(directory,v=True,force=True):
         df['deptime']=df['temp'].apply(find_deptime)
         df['fabstep'] = df['temp'].apply(find_fabstep)
         df['parameters'] = df['temp'].apply(find_parameters)
-        df['multi'] = df['temp'].apply(find_numsweeps)
         df['gate'] = df['temp'].apply(find_gate)
+        df['multi'] = df['temp'].apply(find_numsweeps)
+        df['gateArea']=df['gate'].apply(gate_area)
         df['sweep'] = df['temp'].apply(find_sweep)
         df['timestamp']=df['temp'].apply(get_timestamp)
         df['uuid']=df['temp'].apply(get_runID)
@@ -196,8 +199,8 @@ def updownplot(x,y,**kwargs):
 
 
 ############### Core Tiled data function ###########
-def tile_data(df, column="parameters",row='device', color="fabstep",
-            colwrap=None,  show=True, save=False, v=False,  xlim="", ylim="", sharey=True, x="VG", y="ID", log=True, updown=False, palette=divergent, col_order=None, hue_order=None, ls='-',marker=''):
+def tile_data(df, column=None,row='device', color="fabstep",
+            colwrap=None,  show=True, save=False, v=False,  xlim="", ylim="", sharey=True, x="VG", y="ID", log=True, updown=False, palette=hls, col_order=None, hue_order=None, ls='-',marker=''):
     if v:
         print("dataframe pre tile_data()")
         get_info(df)
@@ -222,7 +225,7 @@ def tile_data(df, column="parameters",row='device', color="fabstep",
         grid.set(ylim=ylim)
     # Adjust the arrangement of the plots
     # grid.fig.tight_layout(w_pad=1)
-    plt.legend(["          "], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+    plt.legend(["                  "], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
     if show:
         plt.show()
     if save:
@@ -237,7 +240,7 @@ def tile_data(df, column="parameters",row='device', color="fabstep",
 def select_20Vbackgates_oftopgated(df, plot=False, save="backgate_acrossFabsteps_updown"):
     data = df[df.device.isin(set(df[df.fabstep=='postSU8'].device)) & (df.gate=='backgate') & (df.parameters=='VG20VDS0.1')]
     if plot:
-        tile_data(data,  column='junctionMean', row=None, colwrap=2, sharey=True, updown=False, save=save,col_order= ['481_01','481_02','484_01','484_02','487_01','487_02','490_01','490_02','493_01','493_02',], hue_order=["postSD",'postSU8','postTop'])
+        tile_data(data,  column='junctionMean', row=None, colwrap=2, sharey=True, updown=False, save=save,col_order= ['481_01','481_02','484_01','484_02','487_01','487_02','490_01','490_02','493_01','493_02',], hue_order=fab_order)
     else:
         return data
 def topgate_spread(df,plot=False):
@@ -252,10 +255,23 @@ def single_topgate(df,plot=False):
         tile_data(data, column='device',row=None, color='gate', save='VG20VDS0.1_490_2_topgate', sharey=False)
     else:
         return data
-def metric_plot(df,p1,p2,show=True,save=False):
-    data = df[(df.parameters=='VG20VDS0.1')]
-    tile_data(data.drop_duplicates(subset=[p1,p2]),column=None,row=None,x=p1,y=p2,ls='',marker='o',show=show,save=save)
-
+def metric_plot(df, p1, p2, show=True, save=False, hue_order=fab_order,gate=None):
+    if save:
+        save="metric_{}vs{}_{}".format(p1,p2,save)
+    tile_data(df.drop_duplicates(subset=[p1,p2]),column=None,row=None,x=p1,y=p2,ls='',marker='o',show=show,save=save,hue_order=hue_order)
+def standard_metrics(df,show=True):
+    data = df[(df.parameters=='VG20VDS0.1') & (df.gate=='backgate') ]
+    metric_plot(data, 'junctionMean', 'ONOFF',save='backgate',show=show)
+    metric_plot(data, 'chip', 'ONOFF',save='backgate',show=show)
+    metric_plot(data, 'junctionMean', 'IDmax',save='backgate',show=show)
+    metric_plot(data, 'chip', 'IDmax',save='backgate',show=show)
+    metric_plot(data, 'junctionMean', 'IDmin',save='backgate',show=show)
+    metric_plot(data, 'chip', 'IDmin',save='backgate',show=show)
+def topgate_metrics(df,show=True):
+    data = df[(df.fabstep=='postTop') & (df.parameters=='VG20VDS0.1')]
+    metric_plot(data,'gateArea', 'ONOFF',save='topgate',show=show)
+    metric_plot(data,'gateArea', 'IDmax',save='topgate',show=show)
+    metric_plot(data,'gateArea', 'IDmin',save='topgate',show=show)
 
 
 
@@ -284,6 +300,7 @@ if __name__ == "__main__":
     parser.add_argument("-f",'--force',action="store_true",help="Forces reloading the data from the source data")
     parser.add_argument("--search", help="Search string to filter the filenames by.",action="store")
     args = parser.parse_args()
+    assert all([os.path.isdir(x) for x in args.directory]), "invalid directory path"
     if args.verbose:
         print("directories loaded : {}".format(args.directory))
 
@@ -294,8 +311,7 @@ if __name__ == "__main__":
         if args.interactive:
             embed()
         else:
-            # df=filter_data(df)
-            # df=match_data(df)
+            df=df[df.parameters=='VG20VSD0.1']
             tile_data(df,v=args.verbose,show=args.show,save=args.save)
     if args.function=="plotall":
         assert len(args.directory)==1, "this function takes only one directory"
