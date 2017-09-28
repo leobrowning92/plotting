@@ -38,13 +38,13 @@ def format_second_axis(ax,ylabel,font=15,color='b'):
 def linear(x,m,c):
     return m*x+c
 
-class multisweep(object):
+class Multisweep(object):
     """contains the data, figures and key metriks for a
     single pa run collecting 2 terminal IV data in a 2 column format
-    When initialized the multisweep object has the full data
+    When initialized the Multisweep object has the full data
     """
     def __init__(self, path, sweepnum, updown=True):
-        super(multisweep, self).__init__()
+        super(Multisweep, self).__init__()
         #argument variables
         self.path = path
         self.sweepnum = sweepnum
@@ -71,7 +71,7 @@ class multisweep(object):
     def __enter__(self):
         return self
     def __str__(self):
-        return "multisweep of "+self.path
+        return "Multisweep of "+self.path
 
     def splitdata(self):
         """
@@ -207,13 +207,13 @@ class multisweep(object):
 
 class sequentialMeasurements(object):
         """
-        makes a full list of the sequential datasets of all of the data in a folder by initializing them as multisweep objects
+        makes a full list of the sequential datasets of all of the data in a folder by initializing them as Multisweep objects
         """
         def __init__(self, samplefolder):
             super(sequentialMeasurements, self).__init__()
             self.dir=samplefolder
             self.datasets=[]
-            self.initlog = self.make_multisweepData()
+            self.initlog = self.make_MultisweepData()
             self.paths= [x.path for x in self.datasets]
             self.timestamps = [ x.timestamp for x in self.datasets]
             self.make_finalRplot = matplotlib.figure.Figure()
@@ -221,12 +221,12 @@ class sequentialMeasurements(object):
         def __enter__(self):
             return self
 
-        def make_multisweepData(self):
+        def make_MultisweepData(self):
             log=[]
             for path in sorted(glob.glob(self.dir+"data/*.csv")):
                 if "x" in path:
                     try:
-                        self.datasets.append(multisweep(path,int(re.search("x(\d{1,3})",path).group(1))))
+                        self.datasets.append(Multisweep(path,int(re.search("x(\d{1,3})",path).group(1))))
                     except ValueError as e:
                         log.append([path,e])
                         print(path)
@@ -303,25 +303,25 @@ class MyTest(unittest.TestCase):
 
 
     def test_split(self):
-        with multisweep(self.testdataset,5) as testdata:
+        with Multisweep(self.testdataset,5) as testdata:
             self.assertEqual(testdata.splitdata().shape, (10,51,2))
 
     def test_gradR(self):
-        with multisweep(self.testdataset, 5) as testdata:
+        with Multisweep(self.testdataset, 5) as testdata:
             self.assertEqual(testdata.calc_gradR(testdata.runs[0]),
                     [2451394.4249741249, 1.9146863336543544e-05])
             self.assertEqual(testdata.make_gradR().shape,(10,2))
     def test_finalR(self):
-        with multisweep(self.testdataset,5) as testdata:
+        with Multisweep(self.testdataset,5) as testdata:
             self.assertEqual(testdata.make_finalR().shape,(5,))
     def test_timestamp(self):
-        with multisweep(self.testdataset, 5) as testdata:
+        with Multisweep(self.testdataset, 5) as testdata:
             self.assertEqual(testdata.timestamp, "2016_10_19_1000")
 
 
-    def test_make_multisweepData(self):
+    def test_make_MultisweepData(self):
         with sequentialMeasurements(self.testdir) as testfolder:
-            self.assertEqual(type(testfolder.datasets[0]), multisweep)
+            self.assertEqual(type(testfolder.datasets[0]), Multisweep)
             self.assertEqual(len(testfolder.datasets), 28)
             self.assertEqual(testfolder.initlog, [])
 

@@ -106,7 +106,6 @@ def plotchips(directory,v=True,show=True,save=True,force=False):
 
 
 
-
 ##################### Tiling code ###########################
 def load_to_dataframe(directory,v=True,force=True):
     if force==False and os.path.isfile(os.path.join(directory,"dataframe.h5")):
