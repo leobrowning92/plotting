@@ -54,6 +54,11 @@ def find_sweep(fname):
 def find_numsweeps(fname):
     try:return re.search('x(\d*)',fname).group(1)
     except: return 1
+def find_run(fname):
+    try:return int(re.search('run(\d{1,3})',fname).group(1))
+    except:
+        print("run error for"+fname)
+        return 1
 def get_info(df):
     print("dataframe contains {} datapoints across {} runs".format(df.shape[0],len(set(df['uuid']))))
     print("the columns are: \n{}".format(list(df)))
@@ -75,7 +80,8 @@ def get_metrics(df):
     df['IGmax']=max(df["IG"])
     df['IDmax']=max(df["ID"])
     df['IDmin']=min(df["ID"])
-    df['ONOFF']=df['IDmax']/df['IDmin']
+    #need to consider some error catching for -ve ids
+    df['ONOFF']=abs(df['IDmax']/df['IDmin'])
     return df
 def gate_area(gate):
     areas={"backgate":3600,"topgate1":600,"topgate2":200,"topgate3":200,"topgate4":600}
@@ -85,18 +91,18 @@ def gate_area(gate):
 
 def plotchips(directory,v=True,show=True,save=True,force=False):
     """
-    This function simply plots all data from a chip, and whacks it in seperate
+    This function simply plots all data from a device, and whacks it in seperate
     plots inside a figure. The figures are saved individually in the
     /plots subdir of the parent directory.
     """
     checkdir(os.path.join(directory,"plots"))
     df=load_to_dataframe(directory,v=v,force=force)
-    for n in set(df.chip):
+    for n in set(df.device):
         try:
             if v:
                 print("plotting data for COL{}".format(n))
-            tile_data(df[(df.chip == n)&(df.sweep == 'transfer')], column="parameters", row='device',color='fabstep',  save="{}plots/COL{}_transferplot".format(directory,n), show=show,sharey=False)
-            tile_data(df[(df.chip == n)&(df.sweep == 'output')],column=None,row='device',color=None, save="{}plots/COL{}_outputplot".format(directory,n),show=show, x="VDS",log=False)
+            tile_data(df[(df.device == n)&(df.sweep == 'transfer')], column="parameters", row='fabstep',color='gate',  save="{}plots/COL{}_transferplot".format(directory,n), show=show,sharey=False)
+            tile_data(df[(df.device == n)&(df.sweep == 'output')],column='gate',row='fabstep',color='VG', save="{}plots/COL{}_outputplot".format(directory,n),show=show, x="VDS",log=False)
         except Exception as e:
             print(e)
             print("failed to plot data from these files:\n{}".format(set(df[df.chip == n].fname)))
@@ -133,6 +139,7 @@ def load_to_dataframe(directory,v=True,force=True):
         #makes columns for the various parameters held in the filename
         df['temp']=df['temp'].apply(lambda x:x[0])
         df['chip']= df['temp'].apply(lambda x:int(x[3:6]) )
+        df['run']=df['temp'].apply(find_run)
         df['device']= df['temp'].apply(lambda x:x[3:9] )
         df['deptime']=df['temp'].apply(find_deptime)
         df['fabstep'] = df['temp'].apply(find_fabstep)
@@ -254,23 +261,25 @@ def single_topgate(df,plot=False):
         tile_data(data, column='device',row=None, color='gate', save='VG20VDS0.1_490_2_topgate', sharey=False)
     else:
         return data
-def metric_plot(df, p1, p2, show=True, save=False, hue_order=fab_order,gate=None):
+def metric_plot(df, p1, p2, show=True, save=False, hue_order=fab_order,gate=None,palette=hls,xlim=''):
     if save:
         save="metric_{}vs{}_{}".format(p1,p2,save)
-    tile_data(df.drop_duplicates(subset=[p1,p2]),column=None,row=None,x=p1,y=p2,ls='',marker='o',show=show,save=save,hue_order=hue_order)
-def standard_metrics(df,show=True):
+    tile_data(df.drop_duplicates(subset=[p1,p2]),column=None,row=None,x=p1,y=p2,ls='',marker='o',show=show,save=save,hue_order=hue_order,palette=palette,xlim=xlim)
+def standard_metrics(df,show=True,palette=hls,xlim=''):
     data = df[(df.parameters=='VG20VDS0.1') & (df.gate=='backgate') ]
-    metric_plot(data, 'junctionMean', 'ONOFF',save='backgate',show=show)
-    metric_plot(data, 'chip', 'ONOFF',save='backgate',show=show)
-    metric_plot(data, 'junctionMean', 'IDmax',save='backgate',show=show)
-    metric_plot(data, 'chip', 'IDmax',save='backgate',show=show)
-    metric_plot(data, 'junctionMean', 'IDmin',save='backgate',show=show)
-    metric_plot(data, 'chip', 'IDmin',save='backgate',show=show)
-def topgate_metrics(df,show=True):
+    metric_plot(data, 'junctionMean', 'ONOFF', save='backgate', show=show, palette=palette)
+    metric_plot(data, 'chip', 'ONOFF', save='backgate', show=show, palette=palette,xlim=xlim)
+    metric_plot(data, 'junctionMean', 'IDmax', save='backgate', show=show, palette=palette)
+    metric_plot(data, 'chip', 'IDmax', save='backgate',show=show, palette=palette,xlim=xlim)
+    metric_plot(data, 'junctionMean', 'IDmin', save='backgate', show=show, palette=palette)
+    metric_plot(data, 'chip', 'IDmin', save='backgate',show=show, palette=palette,xlim=xlim)
+def topgate_metrics(df,show=True,palette=hls,xlim=''):
     data = df[(df.fabstep=='postTop') & (df.parameters=='VG20VDS0.1')]
-    metric_plot(data,'gateArea', 'ONOFF',save='topgate',show=show)
-    metric_plot(data,'gateArea', 'IDmax',save='topgate',show=show)
-    metric_plot(data,'gateArea', 'IDmin',save='topgate',show=show)
+    metric_plot(data,'gateArea', 'ONOFF',save='topgate',show=show, palette=palette,xlim=xlim)
+    metric_plot(data,'gateArea', 'IDmax',save='topgate',show=show, palette=palette,xlim=xlim)
+    metric_plot(data,'gateArea', 'IDmin',save='topgate',show=show, palette=palette,xlim=xlim)
+
+
 
 
 
@@ -294,6 +303,7 @@ if __name__ == "__main__":
     parser.add_argument("--stop", type=int, help="end (inclusive) of chip index")
     parser.add_argument("--show", action="store_true")
     parser.add_argument("-s", "--save", action="store_true")
+    parser.add_argument( "--clear", action="store_true")
     parser.add_argument("-v", "--verbose", action="store_true",default=False)
     parser.add_argument("-i","--interactive",action="store_true", help="If applicable opens up an ipython terminal")
     parser.add_argument("-f",'--force',action="store_true",help="Forces reloading the data from the source data")
@@ -314,6 +324,9 @@ if __name__ == "__main__":
             tile_data(df,v=args.verbose,show=args.show,save=args.save)
     if args.function=="plotall":
         assert len(args.directory)==1, "this function takes only one directory"
+        if args.clear:
+            for f in glob.glob(os.path.join(args.directory[0], "plots", "*")):
+                os.remove(f)
         plotchips(args.directory[0], save=args.save, show=args.show, v=args.verbose,force=args.force)
     if args.function=="collect":
         assert len(args.directory)==1, "this function takes only one directory"
