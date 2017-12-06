@@ -18,9 +18,11 @@ matplotlib.use("TkAgg")
 
 ############## COLORS ###################################
 
+
 divergent=sns.color_palette(["#3778bf", "#feb308", "#7F2C5A", "#c13838", "#2f6830"])
 hls=sns.color_palette("hls", 8)
 fab_order=['postSD','postSU8','postTop']
+son_order=['preson','postson5min','postson10min','postson20min','postson25min','postson30min','postson40min','postson50min']
 six=sns.cubehelix_palette(6, start=1.5, rot=-1,light=0.5,dark=0.2)
 
 
@@ -33,8 +35,12 @@ def find_deptime(fname):
     if 'hrdep' in fname:
         return int(re.search('(\d{1,3})hrdep', fname, flags=re.IGNORECASE).group(1))*60
     elif 'mindep' in fname:
-        return int(re.search('(\d{1,3})mindep', fname, flags=re.IGNORECASE).group(1))
+        return int(re.search('(\d{1,3})mindep', fname,  flags=re.IGNORECASE).group(1))
     else: return "deptimeERROR"
+def find_sontime(fname):
+    """returns the sontime in minutes from the filename"""
+    try: return int(re.search('postson(\d{1,2})min', fname,flags=re.IGNORECASE).group(1))
+    except: return "deptimeERROR"
 def find_parameters(fname):
     try:
         if 'transfer' in fname:
@@ -71,48 +77,36 @@ def get_timestamp(fname):
 def find_gate(fname):
     try:return re.search('_([^_]*gate[^_]*)_', fname).group(1)
     except: return "backgate"
-def load_AFMdensities(directory='AFM_densities'):
+
+def load_AFMdensities(directory='AFM_densities', v=False):
     fnames = glob.glob(os.path.join(directory,"*"))
     densities={os.path.basename(x)[7:13]:float(pd.read_csv(x)['1uMean'][0]) for x in fnames}
     deviations ={os.path.basename(x)[7:13]:float(pd.read_csv(x)['1uStd'][0]) for x in fnames}
     return densities,deviations
-def get_metrics(df):
+def get_metrics(df,fname):
     df['IGmax']=max(df["IG"])
     df['IDmax']=max(df["ID"])
     df['IDmin']=min(df["ID"])
     #need to consider some error catching for -ve ids
-    df['ONOFF']=abs(df['IDmax']/df['IDmin'])
+    df['ONOFF']=df['IDmax']/abs(df['IDmin'])
+    Ithresh=0.5*max(df.ID)
+    try:
+        Vthresh=df[(df.ID<Ithresh)].iloc[0]
+    except:
+        print("thresherror for {}".format(fname))
+        Vthresh=np.nan
+    df["Ithresh"]=Ithresh
+    df["Vthresh"]=Vthresh
     return df
 def gate_area(gate):
     areas={"backgate":3600,"topgate1":600,"topgate2":200,"topgate3":200,"topgate4":600}
     return areas[gate]
 
-############### Plotting Functions ######################
-
-def plotchips(directory,v=True,show=True,save=True,force=False):
-    """
-    This function simply plots all data from a device, and whacks it in seperate
-    plots inside a figure. The figures are saved individually in the
-    /plots subdir of the parent directory.
-    """
-    checkdir(os.path.join(directory,"plots"))
-    df=load_to_dataframe(directory,v=v,force=force)
-    for n in set(df.device):
-        try:
-            if v:
-                print("plotting data for COL{}".format(n))
-            tile_data(df[(df.device == n)&(df.sweep == 'transfer')], column="parameters", row='fabstep',color='gate',  save="{}plots/COL{}_transferplot".format(directory,n), show=show,sharey=False)
-            tile_data(df[(df.device == n)&(df.sweep == 'output')],column='gate',row='fabstep',color='VG', save="{}plots/COL{}_outputplot".format(directory,n),show=show, x="VDS",log=False)
-        except Exception as e:
-            print(e)
-            print("failed to plot data from these files:\n{}".format(set(df[df.chip == n].fname)))
-
-
-
-
 
 
 ##################### Tiling code ###########################
+
+
 def load_to_dataframe(directory,v=True,force=True):
     if force==False and os.path.isfile(os.path.join(directory,"dataframe.h5")):
         try:
@@ -121,7 +115,7 @@ def load_to_dataframe(directory,v=True,force=True):
             df=store['df']
         except Exception as e:
             print(e)
-            print("there was an error loading the database")
+            print("there was an error loading the database from h5 file for {}".format(directory))
     else:
         print("loading data from source files in {}".format(directory))
         fnames = glob.glob(os.path.join(directory,"data/COL*"))
@@ -129,9 +123,9 @@ def load_to_dataframe(directory,v=True,force=True):
             for i in range(1,len(directory)):
                 fnames=fnames+glob.glob(os.path.join(directory[i],"data/COL*"))
         fnames.sort()
-        mean,std=load_AFMdensities()
+        mean,std=load_AFMdensities(v=v)
         # process fnames
-        frames= [ get_metrics(pd.read_csv(fname)) for fname in fnames ]
+        frames= [ get_metrics(pd.read_csv(fname),fname) for fname in fnames ]
         # sets index to fname and concatenates dataset
         df=pd.concat(frames,keys=[os.path.basename(fname) for fname in fnames])
         # moves the fname to a column
@@ -142,6 +136,7 @@ def load_to_dataframe(directory,v=True,force=True):
         df['run']=df['temp'].apply(find_run)
         df['device']= df['temp'].apply(lambda x:x[3:9] )
         df['deptime']=df['temp'].apply(find_deptime)
+        df['sontime']=df['temp'].apply(find_sontime)
         df['fabstep'] = df['temp'].apply(find_fabstep)
         df['parameters'] = df['temp'].apply(find_parameters)
         df['gate'] = df['temp'].apply(find_gate)
@@ -165,7 +160,9 @@ def load_to_dataframe(directory,v=True,force=True):
         get_info(df)
     return df
 
+
 ################# Data Formatting functions
+
 
 def mask_data(df,column,tag):
     data=df
@@ -198,13 +195,15 @@ def match_data(df,column='fabstep',match='postSU8'):
     ls=data[data[column].isin([match])]['device']
     data=data[data['device'].isin(ls)]
     return data
-
 def updownplot(x,y,**kwargs):
     plt.semilogy(x[:len(x)//2],y[:len(y)//2],**kwargs)
     plt.semilogy(x[len(x)//2:],y[len(y)//2:],'--',**kwargs,)
 
 
+
 ############### Core Tiled data function ###########
+
+
 def tile_data(df, column=None,row='device', color="fabstep",
             colwrap=None,  show=True, save=False, v=False,  xlim="", ylim="", sharey=True, x="VG", y="ID", log=True, updown=False, palette=hls, col_order=None, hue_order=None, ls='-',marker=''):
     if v:
@@ -237,11 +236,34 @@ def tile_data(df, column=None,row='device', color="fabstep",
     if save:
         grid.fig.suptitle(save,y=1.05)
         grid.savefig("{}.png".format(save))
+        # grid.savefig("{}.pdf".format(save))
     plt.close()
+
+############### Plotting Functions ######################
+
+
+def plotchips(directory,v=True,show=True,save=True,force=False):
+    """
+    This function simply plots all data from a device, and whacks it in seperate
+    plots inside a figure. The figures are saved individually in the
+    /plots subdir of the parent directory.
+    """
+    checkdir(os.path.join(directory,"plots"))
+    df=load_to_dataframe(directory,v=v,force=force)
+    for n in set(df.device):
+        try:
+            if v:
+                print("plotting data for COL{}".format(n))
+            tile_data(df[(df.device == n)&(df.sweep == 'transfer')], column="parameters", row='fabstep',color='gate',  save="{}plots/COL{}_transferplot".format(directory,n), show=show,sharey=False)
+            tile_data(df[(df.device == n)&(df.sweep == 'output')],column='gate',row='fabstep',color='VG', save="{}plots/COL{}_outputplot".format(directory,n),show=show, x="VDS",log=False)
+        except Exception as e:
+            print(e)
+            print("failed to plot all data from this device:\n{}".format(set(df[df.device == n].fname)))
 
 
 
 ############## Tiling and data filtering presets ##############
+
 
 def select_20Vbackgates_oftopgated(df, plot=False, save="backgate_acrossFabsteps_updown"):
     data = df[df.device.isin(set(df[df.fabstep=='postSU8'].device)) & (df.gate=='backgate') & (df.parameters=='VG20VDS0.1')]
@@ -265,24 +287,28 @@ def metric_plot(df, p1, p2, show=True, save=False, hue_order=fab_order,gate=None
     if save:
         save="metric_{}vs{}_{}".format(p1,p2,save)
     tile_data(df.drop_duplicates(subset=[p1,p2]),column=None,row=None,x=p1,y=p2,ls='',marker='o',show=show,save=save,hue_order=hue_order,palette=palette,xlim=xlim)
-def standard_metrics(df,show=True,palette=hls,xlim=''):
+def standard_metrics(df,show=True, save='backgate', palette=hls,xlim=''):
     data = df[(df.parameters=='VG20VDS0.1') & (df.gate=='backgate') ]
-    metric_plot(data, 'junctionMean', 'ONOFF', save='backgate', show=show, palette=palette)
-    metric_plot(data, 'chip', 'ONOFF', save='backgate', show=show, palette=palette,xlim=xlim)
-    metric_plot(data, 'junctionMean', 'IDmax', save='backgate', show=show, palette=palette)
-    metric_plot(data, 'chip', 'IDmax', save='backgate',show=show, palette=palette,xlim=xlim)
-    metric_plot(data, 'junctionMean', 'IDmin', save='backgate', show=show, palette=palette)
-    metric_plot(data, 'chip', 'IDmin', save='backgate',show=show, palette=palette,xlim=xlim)
-def topgate_metrics(df,show=True,palette=hls,xlim=''):
+    metric_plot(data, 'junctionMean', 'ONOFF', save=save, show=show, palette=palette)
+    metric_plot(data, 'chip', 'ONOFF', save=save, show=show, palette=palette,xlim=xlim)
+    metric_plot(data, 'junctionMean', 'IDmax', save=save, show=show, palette=palette)
+    metric_plot(data, 'chip', 'IDmax', save=save,show=show, palette=palette,xlim=xlim)
+    metric_plot(data, 'junctionMean', 'IDmin', save=save, show=show, palette=palette)
+    metric_plot(data, 'chip', 'IDmin', save=save,show=show, palette=palette,xlim=xlim)
+def topgate_metrics(df,show=True, save='topgate', palette=hls,xlim=''):
     data = df[(df.fabstep=='postTop') & (df.parameters=='VG20VDS0.1')]
-    metric_plot(data,'gateArea', 'ONOFF',save='topgate',show=show, palette=palette,xlim=xlim)
-    metric_plot(data,'gateArea', 'IDmax',save='topgate',show=show, palette=palette,xlim=xlim)
-    metric_plot(data,'gateArea', 'IDmin',save='topgate',show=show, palette=palette,xlim=xlim)
-
-
-
-
-
+    metric_plot(data,'gateArea', 'ONOFF',save=save,show=show, palette=palette,xlim=xlim)
+    metric_plot(data,'gateArea', 'IDmax',save=save,show=show, palette=palette,xlim=xlim)
+    metric_plot(data,'gateArea', 'IDmin',save=save,show=show, palette=palette,xlim=xlim)
+def sonication_metrics(df,show=True, save='sonication', palette=hls,xlim=''):
+    data=df
+    data.chip=data.device.apply(lambda x:float(x[0:3]) if x[-1]=='1' else float(x[0:3])+0.5)
+    metric_plot(df, 'chip', 'IDmax', hue_order=son_order, xlim=(480,496), save=save, show=show)
+    metric_plot(df, 'chip', 'IDmin', hue_order=son_order, xlim=(480,496), save=save, show=show)
+    metric_plot(df, 'chip', 'ONOFF', hue_order=son_order, xlim=(480,496), save=save, show=show)
+def sonication_sweeps(df,directory):
+    for n in set(df.device):
+        tile_data(df[(df.device == n)&(df.sweep == 'transfer')], column="parameters", row=None,color='fabstep',  save="{}plots/COL{}_transferplot".format(directory,n), show=False,sharey=False,hue_order=son_order)
 
 
 if __name__ == "__main__":
@@ -312,6 +338,7 @@ if __name__ == "__main__":
     assert all([os.path.isdir(x) for x in args.directory]), "invalid directory path"
     if args.verbose:
         print("directories loaded : {}".format(args.directory))
+    pd.options.display.max_rows=6
 
     #run funcitons
     if args.function=="tile":

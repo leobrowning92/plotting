@@ -4,6 +4,7 @@ import pandas as pd
 from plotting_fns import format_primary_axis,checkdir
 from IPython import embed
 import matplotlib.pyplot as plt
+import scipy.constants as const
 divergent=["#3778bf", "#feb308", "#7F2C5A", "#c13838", "#2f6830"]
 def get_info(df):
     print("dataframe contains {} datapoints across {} runs".format(df.shape[0],len(set(df['uuid']))))
@@ -41,7 +42,7 @@ def load_to_dataframe(directory,v=True,force=True):
         df['temp']=df['temp'].apply(lambda x:x[0])
         df['fname']=df['temp']
         df["R"]=df['AV']/df['AI']
-        df["G"]=df['AI']/df['AV']
+        df["G"]=df['AI']/df['AV']/const.physical_constants["conductance quantum"][0]
         df['run']=df['temp'].apply(get_run)
         df['uuid']=df['temp'].apply(get_runID)
         df.drop(['temp'],axis=1,inplace=True)
@@ -55,23 +56,47 @@ def load_to_dataframe(directory,v=True,force=True):
         get_info(df)
     return df
 
-def timetrace(ax1,data,x="Time",y1="AV",y2="IV",y2log=False,c1='r',c2='b'):
+def timetrace(ax1,data, x="Time", y1="AV", y2="IV", y2log=False, c1='r', c2='b', y1label="AV", y2label="IV"):
 
-    ax1.plot(data.Time,data.AV,'.-',color=c1)
-    format_primary_axis(ax1, xlabel="Time (s)", ylabel=y1, color=c1, sci=True, fontsize=20, title="")
+    ax1.plot(data.Time,data.AV,'.-',color=c1, markersize=15, linewidth=3)
+    format_primary_axis(ax1, xlabel="Time (s)", ylabel=y1label, color=c1, sci=True, fontsize=20, title="")
     ax2=ax1.twinx()
     if y2log:
         if all(data[y2]>0):
-            ax2.semilogy(data.Time,data[y2],'.-',color=c2)
-            format_primary_axis(ax2, xlabel="Time (s)", ylabel=y2, color=c2, sci=not(y2log), fontsize=20, title="")
+            ax2.semilogy(data.Time,data[y2],'.-',color=c2, markersize=15, linewidth=3)
+            format_primary_axis(ax2, xlabel="Time (s)", ylabel=y2label, color=c2, sci=not(y2log), fontsize=20, title="")
         else:
-            ax2.plot(data.Time,data[y2],'.-',color=c2)
-            format_primary_axis(ax2, xlabel="Time (s)", ylabel=y2, color=c2, sci=True, fontsize=20, title="")
+            ax2.plot(data.Time,data[y2],'.-',color=c2, markersize=15, linewidth=3)
+            format_primary_axis(ax2, xlabel="Time (s)", ylabel=y2label, color=c2, sci=True, fontsize=20, title="")
     else:
-        ax2.plot(data.Time,data[y2],'.-',color=c2)
+        ax2.plot(data.Time,data[y2],'.-', color=c2, markersize=15, linewidth=3)
+        format_primary_axis(ax2, xlabel="Time (s)", ylabel=y2label, color=c2, sci=True, fontsize=20, title="")
+def sweep(ax1,data,x="AV",y="IV",ylog=False,c1='r',ylabel="IV"):
+    ax1.plot(data.AV,data[y],'.-',color=c1, markersize=15, linewidth=3)
+    format_primary_axis(ax1, xlabel="AV", ylabel=ylabel, color=c1, sci=ylog, fontsize=20, title="")
 
-
-
+def plot_sequence(data):
+    fig=plt.figure(facecolor='white',figsize=(10,20))
+    ax1=plt.subplot(311)
+    ax2=plt.subplot(312)
+    ax3=plt.subplot(313)
+    timetrace(ax1, data, y2="AI", y2log=False, c1="#3778bf", c2="#7F2C5A",y2label="I / A")
+    timetrace(ax2, data, y2="R", y2log=True, c1="#3778bf", c2="#c13838", y2label="R / $\Omega$")
+    timetrace(ax3, data, y2="G", y2log=True, c1="#3778bf", c2="#feb308", y2label="G / $G_0$")
+def plot_sweep(data):
+    fig=plt.figure(facecolor='white',figsize=(20,20))
+    ax1=plt.subplot(321)
+    ax2=plt.subplot(323)
+    ax3=plt.subplot(325)
+    timetrace(ax1, data, y2="AI", y2log=False, c1="#3778bf", c2="#7F2C5A",y2label="I / A")
+    timetrace(ax2, data, y2="R", y2log=True, c1="#3778bf", c2="#c13838", y2label="R / $\Omega$")
+    timetrace(ax3, data, y2="G", y2log=True, c1="#3778bf", c2="#feb308", y2label="G / $G_0$")
+    ax4=plt.subplot(322)
+    ax5=plt.subplot(324)
+    ax6=plt.subplot(326)
+    sweep(ax4, data, x="AV", y="AI", ylog=False, c1="#7F2C5A",ylabel="I / A")
+    sweep(ax5, data, x="AV", y="R", ylog=True, c1="#c13838", ylabel= "R / $\Omega$")
+    sweep(ax6, data, x="AV", y="G", ylog=True, c1="#feb308", ylabel="G / $G_0$")
 
 def plot_all(directory,v=True,show=True,save=True,force=False):
     checkdir(os.path.join(directory,"plots"))
@@ -80,17 +105,14 @@ def plot_all(directory,v=True,show=True,save=True,force=False):
         data=df[df.run==n]
         fname=data.fname.iloc[0]
         try:
+            if "sweep" in fname:
+                plot_sweep(data)
+            else:
+                plot_sequence(data)
+
+
             if v:
-
                 print("plotting data for: {}".format(fname))
-            fig=plt.figure(facecolor='white',figsize=(10,20))
-            ax1=plt.subplot(311)
-            ax2=plt.subplot(312)
-            ax3=plt.subplot(313)
-            timetrace(ax1, data, y2="AI", y2log=False, c1="#3778bf", c2="#7F2C5A")
-            timetrace(ax2, data, y2="R", y2log=True, c1="#3778bf", c2="#c13838")
-            timetrace(ax3, data, y2="G", y2log=True, c1="#3778bf", c2="#feb308")
-
             if show:
                 plt.show()
             if save:
