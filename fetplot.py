@@ -87,16 +87,21 @@ def get_metrics(df,fname):
     df['IGmax']=max(df["IG"])
     df['IDmax']=max(df["ID"])
     df['IDmin']=min(df["ID"])
-    #need to consider some error catching for -ve ids
-    df['ONOFF']=df['IDmax']/abs(df['IDmin'])
-    Ithresh=0.5*max(df.ID)
-    try:
-        Vthresh=df[(df.ID<Ithresh)].iloc[0]
-    except:
-        print("thresherror for {}".format(fname))
-        Vthresh=np.nan
-    df["Ithresh"]=Ithresh
-    df["Vthresh"]=Vthresh
+    if "transfer" in fname:
+        #need to consider some error catching for -ve ids
+        df['ONOFF']=df['IDmax']/abs(df['IDmin'])
+        Ithresh=0.5*max(df.ID)
+        try:
+            Vthresh=df[(df.ID<Ithresh)].iloc[0]
+        except:
+            print("thresherror for {}".format(fname))
+            Vthresh=np.nan
+        df["Ithresh"]=Ithresh
+        df["Vthresh"]=Vthresh
+    else:
+        df['ONOFF']=np.nan
+        df["Ithresh"]=np.nan
+        df["Vthresh"]=np.nan
     return df
 def gate_area(gate):
     areas={"backgate":3600,"topgate1":600,"topgate2":200,"topgate3":200,"topgate4":600}
@@ -283,10 +288,10 @@ def single_topgate(df,plot=False):
         tile_data(data, column='device',row=None, color='gate', save='VG20VDS0.1_490_2_topgate', sharey=False)
     else:
         return data
-def metric_plot(df, p1, p2, show=True, save=False, hue_order=fab_order,gate=None,palette=hls,xlim=''):
+def metric_plot(df, p1, p2, show=True, save=False, hue_order=fab_order,gate=None,palette=hls,xlim='',column=None,row=None,colwrap=None,sharey=True):
     if save:
         save="metric_{}vs{}_{}".format(p1,p2,save)
-    tile_data(df.drop_duplicates(subset=[p1,p2]),column=None,row=None,x=p1,y=p2,ls='',marker='o',show=show,save=save,hue_order=hue_order,palette=palette,xlim=xlim)
+    tile_data(df.drop_duplicates(subset=[p1,p2]),column=column,row=row,colwrap=colwrap,x=p1,y=p2,ls='',marker='o',show=show,save=save,hue_order=hue_order,palette=palette,xlim=xlim,sharey=sharey)
 def standard_metrics(df,show=True, save='backgate', palette=hls,xlim=''):
     data = df[(df.parameters=='VG20VDS0.1') & (df.gate=='backgate') ]
     metric_plot(data, 'junctionMean', 'ONOFF', save=save, show=show, palette=palette)

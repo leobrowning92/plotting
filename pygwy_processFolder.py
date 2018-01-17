@@ -7,7 +7,7 @@ def save_outputs(c,filebase):
    # export datafield from container c specified by name to png file
    gwyutils.save_dfield_to_png(c, "/0/data", filebase+"_fixed.png", gwy.RUN_NONINTERACTIVE)
 
-directory="/home/leo/drive/Work/COL601-609_postdep_1-80min_AFM"
+directory="/home/leo/drive/Work/COL600_NewDensityVar/COL611-619_postSD_6-14min_AFM"
 for name in os.listdir(directory):
     fullpath=os.path.join(directory, name)
     c=gwy.gwy_app_file_load(fullpath)

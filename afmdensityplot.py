@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse, textwrap
+import argparse, textwrap, glob, os
 import pandas as pd
 import seaborn as sns
 import numpy as np
@@ -57,9 +57,20 @@ def get_density_distribution(df,n):
         for j in range(n):
             data[-j,-i]=len(df[(df.x<(i+1)*1024//n) & (df.x>=i*1024//n)&(df.y<(j+1)*1024//n)&(df.y>=j*1024//n)])*(n/5.)**2
     return data
-def save_density_metrics(tubedata,juncdata,fname):
-    pd.DataFrame([(np.mean(juncdata),np.mean(juncdata),np.std(juncdata))], columns=["totalMean","1uMean","1uStd"]).to_csv( fname.replace("_tubes.txt", "_Totalmean_junctions.csv"), delimiter=',')
-    pd.DataFrame([(np.mean(tubedata),np.mean(tubedata),np.std(tubedata))], columns=["totalMean","1uMean","1uStd"]).to_csv( fname.replace("_tubes.txt", "_Totalmean_tubes.csv"), delimiter=',')
+def save_density_metrics(fname,tubedata,juncdata,lengths, splits=0):
+    lengths=lengths*5/1024
+    lengthMeanCorrected=sum(lengths)/(len(lengths)-splits)
+    percolationCorrected = calc_percolation(lengthMeanCorrected)
+    basename=os.path.basename(fname)[:-4]
+    data=[[basename, np.mean(juncdata), np.std(juncdata), np.mean(tubedata), np.std(tubedata), np.mean(lengths), np.std(lengths),  calc_percolation(lengths),  splits, np.mean(juncdata)-splits/25, np.mean(tubedata)-splits/25, lengthMeanCorrected,percolationCorrected]]
+    columns=["fname","junctionMean","junctionStd","tubeMean","tubeStd","lenthMean","lengthStd","percolation", "splits", "junctionMeanCorrected", "tubeMeanCorrected", "lengthMeanCorrected", "percolationCorrected"]
+    df=pd.DataFrame(data, columns=columns)
+    df.to_csv( fname.replace("_tubes.txt", "_density.csv"), delimiter=',')
+
+
+
+def calc_percolation(lengths):
+    return (4.236**2)/(np.pi*np.mean(lengths)**2)
 
 def plot_image(fname,save=False, show=True):
     dftubes=pd.read_csv(fname, delimiter='\t',usecols=[2,3,4,5])
@@ -67,38 +78,63 @@ def plot_image(fname,save=False, show=True):
     segs=np.array([get_ends(row) for row in dftubes.values])
     junctions=get_junctions(segs)
     dfjunctions=pd.DataFrame(junctions,columns=["x","y"])
-
-
     tubedist=get_density_distribution(dftubes, 5)
     juncdist=get_density_distribution(dfjunctions, 5)
-    if save:
-        save_density_metrics(tubedist, juncdist, fname)
+    spl=pd.read_csv(os.path.join(os.path.dirname(fname),"splits.dat"))
+    split=spl.splits[spl.fname==os.path.basename(fname)[:-4]].values[0]
+    save_density_metrics(fname, tubedist, juncdist, dftubes.length.values, splits=split)
 
 
-    fig=plt.figure(figsize=(10,5))
-    ax1 = fig.add_subplot(1,2,2)
-    ax2 = fig.add_subplot(1,2,1)
+    if save or show:
+        fig=plt.figure(figsize=(10,5))
+        ax1 = fig.add_subplot(1,2,2)
+        ax2 = fig.add_subplot(1,2,1)
 
 
-    img=mpimg.imread(fname.replace("_tubes.txt",".png"))
-    ax1.imshow(img)
-    plot_tubes(ax1,segs,junctions)
-    major_ticks = np.arange(0, 1024, 204.7)
-    ax1.set_xticks(major_ticks)
-    ax1.set_yticks(major_ticks)
-    ax1.set_xticklabels([0,1,2,3,4,5])
-    ax1.set_yticklabels([0,1,2,3,4,5])
+        img=mpimg.imread(fname.replace("_tubes.txt",".png"))
+        ax1.imshow(img)
+        plot_tubes(ax1,segs,junctions)
+        major_ticks = np.arange(0, 1024, 204.7)
+        ax1.set_xticks(major_ticks)
+        ax1.set_yticks(major_ticks)
+        ax1.set_xticklabels([0,1,2,3,4,5])
+        ax1.set_yticklabels([0,1,2,3,4,5])
 
-    n=5
-    g=sns.distplot(np.reshape(tubedist,n**2),bins=10,ax=ax2,label="Tubes")
-    g=sns.distplot(np.reshape(juncdist,n**2),bins=10,ax=ax2,label="Junctions")
-    g.set_xlabel("Density $/\mu m^2$")
-    g.set_ylabel("Count")
-    ax2.legend()
+        n=5
+        g=sns.distplot(np.reshape(tubedist,n**2),bins=None,ax=ax2,label="Tubes")
+        g=sns.distplot(np.reshape(juncdist,n**2),bins=None,ax=ax2,label="Junctions")
+        g.set_xlabel("Density $/\mu m^2$")
+        g.set_ylabel("Count")
+        lengths=dftubes.length.values*5/1025
+        ax2.axvline(np.mean(tubedist),color='b',label="tube mean")
+        ax2.axvline(np.mean(juncdist),color='g',label="junction mean")
+        ax2.axvline(calc_percolation(lengths),color='r',label='$P_{Th}$')
+        ax2.axvline(np.mean(tubedist)-split/25,color='b',label="tube mean corrected", alpha=0.5)
+        ax2.axvline(np.mean(juncdist)-split/25,color='g',label="junction mean corrected", alpha=0.5)
+        ax2.axvline(calc_percolation(sum(lengths)/(len(lengths)-split)),color='r',label='$P_{Th}$ Corrected', alpha=0.5)
+        ax2.legend()
     if save:
         plt.savefig(fname.replace("_tubes.txt", "_density_plots.png"))
     if show:
         plt.show()
+def combine_data(folder):
+    cols=["fname","junctionMean","junctionStd","tubeMean","tubeStd","lenthMean","lengthStd","percolation", "splits", "junctionMeanCorrected", "tubeMeanCorrected", "lengthMeanCorrected", "percolationCorrected"]
+    fnames=glob.glob(folder+"*density.csv")
+    data=pd.concat([pd.read_csv(fname) for fname in fnames])
+    data.sort_values(by="fname",inplace=True)
+    data.to_csv("all_density_data.csv",index=False,columns=cols)
+
+
+
+def plot_all(folder,save=False,show=True,v=False):
+    fnames=glob.glob(folder+"*tubes.txt")
+    for fname in fnames:
+        plot_image(fname,save,show)
+        if v:
+            print("Done: {}".format(os.path.basename(fname)))
+    combine_data(folder)
+    if v:
+        print("Data processing complete!")
 
 
 
@@ -154,11 +190,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser( formatter_class=argparse.RawDescriptionHelpFormatter, description=textwrap.dedent("""\
             For plotting AFM junction densities"""))
 
-    parser.add_argument("files", type=str, nargs='*', help="names of text files with point information from afm images")
+    parser.add_argument("folder", type=str, help="folder holding counted text files")
     parser.add_argument("--show", action="store_true")
     parser.add_argument("-s", "--save", action="store_true")
     parser.add_argument("-v", "--verbose", action="store_true",default=False)
     args = parser.parse_args()
-    for fname in args.files:
-        assert fname[-4:]==".txt", "incorrect filetype: {}".format(fname)
-        plot_image(fname,save=args.save,show=args.show)
+    plot_all(args.folder,save=args.save,show=args.show,v=args.verbose)
