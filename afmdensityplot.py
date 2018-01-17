@@ -61,9 +61,9 @@ def save_density_metrics(fname,tubedata,juncdata,lengths, splits=0):
     lengths=lengths*5/1024
     lengthMeanCorrected=sum(lengths)/(len(lengths)-splits)
     percolationCorrected = calc_percolation(lengthMeanCorrected)
-    basename=os.path.basename(fname)[:-4]
-    data=[[basename, np.mean(juncdata), np.std(juncdata), np.mean(tubedata), np.std(tubedata), np.mean(lengths), np.std(lengths),  calc_percolation(lengths),  splits, np.mean(juncdata)-splits/25, np.mean(tubedata)-splits/25, lengthMeanCorrected,percolationCorrected]]
-    columns=["fname","junctionMean","junctionStd","tubeMean","tubeStd","lenthMean","lengthStd","percolation", "splits", "junctionMeanCorrected", "tubeMeanCorrected", "lengthMeanCorrected", "percolationCorrected"]
+    device=os.path.basename(fname)[4:13]
+    data=[[device, np.mean(juncdata), np.std(juncdata), np.mean(tubedata), np.std(tubedata), np.mean(lengths), np.std(lengths),  calc_percolation(lengths),  splits, np.mean(juncdata)-splits/25, np.mean(tubedata)-splits/25, lengthMeanCorrected,percolationCorrected]]
+    columns=["device","junctionMean","junctionStd","tubeMean","tubeStd","lenthMean","lengthStd","percolation", "splits", "junctionMeanCorrected", "tubeMeanCorrected", "lengthMeanCorrected", "percolationCorrected"]
     df=pd.DataFrame(data, columns=columns)
     df.to_csv( fname.replace("_tubes.txt", "_density.csv"), delimiter=',')
 
@@ -118,10 +118,10 @@ def plot_image(fname,save=False, show=True):
     if show:
         plt.show()
 def combine_data(folder):
-    cols=["fname","junctionMean","junctionStd","tubeMean","tubeStd","lenthMean","lengthStd","percolation", "splits", "junctionMeanCorrected", "tubeMeanCorrected", "lengthMeanCorrected", "percolationCorrected"]
+    cols=["device","junctionMean","junctionStd","tubeMean","tubeStd","lenthMean","lengthStd","percolation", "splits", "junctionMeanCorrected", "tubeMeanCorrected", "lengthMeanCorrected", "percolationCorrected"]
     fnames=glob.glob(folder+"*density.csv")
     data=pd.concat([pd.read_csv(fname) for fname in fnames])
-    data.sort_values(by="fname",inplace=True)
+    data.sort_values(by="device",inplace=True)
     data.to_csv("all_density_data.csv",index=False,columns=cols)
 
 

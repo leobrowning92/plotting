@@ -78,11 +78,7 @@ def find_gate(fname):
     try:return re.search('_([^_]*gate[^_]*)_', fname).group(1)
     except: return "backgate"
 
-def load_AFMdensities(directory='AFM_densities', v=False):
-    fnames = glob.glob(os.path.join(directory,"*"))
-    densities={os.path.basename(x)[7:13]:float(pd.read_csv(x)['1uMean'][0]) for x in fnames}
-    deviations ={os.path.basename(x)[7:13]:float(pd.read_csv(x)['1uStd'][0]) for x in fnames}
-    return densities,deviations
+
 def get_metrics(df,fname):
     df['IGmax']=max(df["IG"])
     df['IDmax']=max(df["ID"])
@@ -102,6 +98,12 @@ def get_metrics(df,fname):
         df['ONOFF']=np.nan
         df["Ithresh"]=np.nan
         df["Vthresh"]=np.nan
+
+
+    tubedata=pd.read_csv("all_density_data.csv")
+    for key in list(tubedata):
+        if key!="device":
+            df[key]=float( tubedata["junctionMeanCorrected"][ os.path.basename(fname)[0:9] ==tubedata.device ].values )
     return df
 def gate_area(gate):
     areas={"backgate":3600,"topgate1":600,"topgate2":200,"topgate3":200,"topgate4":600}
@@ -128,7 +130,6 @@ def load_to_dataframe(directory,v=True,force=True):
             for i in range(1,len(directory)):
                 fnames=fnames+glob.glob(os.path.join(directory[i],"data/COL*"))
         fnames.sort()
-        mean,std=load_AFMdensities(v=v)
         # process fnames
         frames= [ get_metrics(pd.read_csv(fname),fname) for fname in fnames ]
         # sets index to fname and concatenates dataset
@@ -150,8 +151,6 @@ def load_to_dataframe(directory,v=True,force=True):
         df['sweep'] = df['temp'].apply(find_sweep)
         df['timestamp']=df['temp'].apply(get_timestamp)
         df['uuid']=df['temp'].apply(get_runID)
-        df['junctionMean']=df['device'].apply(lambda x: mean[x] if x in mean.keys() else np.nan)
-        df['junctionStd']=df['device'].apply(lambda x: std[x] if x in std.keys() else np.nan)
         df['fname']=df['temp']
         df.drop(['temp'],axis=1,inplace=True)
         # resets the index to a unique identifier for a datarun
