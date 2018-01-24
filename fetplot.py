@@ -7,14 +7,15 @@ by my automated Parameter analyser scripts
 """
 
 import glob, re, os, sys, time, argparse, hashlib, textwrap
+import matplotlib
+matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 from IPython import embed
 import pandas as pd
 import numpy as np
 import seaborn as sns
 from plotting_fns import format_primary_axis,checkdir
-import matplotlib
-matplotlib.use("TkAgg")
+
 
 ############## COLORS ###################################
 
@@ -79,13 +80,13 @@ def find_gate(fname):
     except: return "backgate"
 
 
-def get_metrics(df,fname):
+def get_metrics(df,fname,directory):
     df['IGmax']=max(df["IG"])
     df['IDmax']=max(df["ID"])
-    df['IDmin']=min(df["ID"])
+    df['IDmin']=abs(min(df["ID"]))
     if "transfer" in fname:
         #need to consider some error catching for -ve ids
-        df['ONOFF']=df['IDmax']/abs(df['IDmin'])
+        df['onoff']=df['IDmax']/abs(df['IDmin'])
         Ithresh=0.5*max(df.ID)
         try:
             Vthresh=df[(df.ID<Ithresh)].iloc[0]
@@ -95,19 +96,28 @@ def get_metrics(df,fname):
         df["Ithresh"]=Ithresh
         df["Vthresh"]=Vthresh
     else:
-        df['ONOFF']=np.nan
+        df['onoff']=np.nan
         df["Ithresh"]=np.nan
         df["Vthresh"]=np.nan
 
 
-    tubedata=pd.read_csv("all_density_data.csv")
+    tubedata=pd.read_csv(os.path.join(directory, "all_density_data.csv"))
     for key in list(tubedata):
         if key!="device":
-            df[key]=float( tubedata["junctionMeanCorrected"][ os.path.basename(fname)[0:9] ==tubedata.device ].values )
+            df[key]=float( tubedata[key][ os.path.basename(fname)[0:9] ==tubedata.device ].values )
     return df
 def gate_area(gate):
     areas={"backgate":3600,"topgate1":600,"topgate2":200,"topgate3":200,"topgate4":600}
     return areas[gate]
+
+def normalize_onoff(df):
+    backgates={device : df[(df["device"]==device) & (df["gate"]=="backgate") & (df.parameters=="VG20VDS0.1")].onoff.values[0] for device in df[df.gate=="backgate"].drop_duplicates(subset="device").device.values}
+    print(backgates)
+    df["backoff"]=df["device"].apply(lambda x: backgates[x])
+    # df.loc[df[gate]=="top",'normalonoff']=df[df.chip=="back"]
+    df["normalonoff"]=df.onoff/df.backoff
+    return df
+
 
 
 
@@ -131,7 +141,7 @@ def load_to_dataframe(directory,v=True,force=True):
                 fnames=fnames+glob.glob(os.path.join(directory[i],"data/COL*"))
         fnames.sort()
         # process fnames
-        frames= [ get_metrics(pd.read_csv(fname),fname) for fname in fnames ]
+        frames= [ get_metrics(pd.read_csv(fname),fname,directory) for fname in fnames ]
         # sets index to fname and concatenates dataset
         df=pd.concat(frames,keys=[os.path.basename(fname) for fname in fnames])
         # moves the fname to a column
@@ -156,6 +166,7 @@ def load_to_dataframe(directory,v=True,force=True):
         # resets the index to a unique identifier for a datarun
         df.reset_index(drop=True,inplace=True)
         #prints information about the dataframe
+        df=normalize_onoff(df)
         store = pd.HDFStore(os.path.join(directory,"dataframe.h5"))
         store['df'] = df
 
@@ -209,20 +220,20 @@ def updownplot(x,y,**kwargs):
 
 
 def tile_data(df, column=None,row='device', color="fabstep",
-            colwrap=None,  show=True, save=False, v=False,  xlim="", ylim="", sharey=True, x="VG", y="ID", log=True, updown=False, palette=hls, col_order=None, hue_order=None, ls='-',marker=''):
+            colwrap=None,  show=True, save=False, v=False,  xlim="", ylim="", sharey=True, x="VG", y="ID", log=True, updown=False, palette=hls, col_order=None, hue_order=None, ls='-',marker='',xlabel='',ylabel='',fontscale=1):
     if v:
         print("dataframe pre tile_data()")
         get_info(df)
-    sns.set(style="ticks",font_scale=1,palette=palette)
+    sns.set(style="ticks",font_scale=fontscale,palette=palette)
     # Initialize a grid of plots with an Axes for each walk
-    grid = sns.FacetGrid(df, col=column, hue=color,row=row, col_wrap=colwrap, size=4,sharey=sharey, col_order=col_order, hue_order=hue_order)
+    grid = sns.FacetGrid(df, col=column, hue=color,row=row, col_wrap=colwrap, size=4,sharey=sharey, col_order=col_order, hue_order=hue_order,legend_out=True)
     # Draw a line plot to show the trajectory of each random walk
     if updown:
-        grid.map(updownplot, x, y,ls=ls,marker=marker).add_legend()
+        grid.map(updownplot, x, y,ls=ls,marker=marker)
     elif log and not(updown):
-        grid.map(plt.semilogy, x, y,ls=ls,marker=marker).add_legend()
+        grid.map(plt.semilogy, x, y,ls=ls,marker=marker)
     else:
-        grid.map(plt.plot, x, y,ls=ls,marker=marker).add_legend( )
+        grid.map(plt.plot, x, y,ls=ls,marker=marker)
     # Adjust the tick positions and labels
     if xlim=='':
         pass
@@ -232,9 +243,16 @@ def tile_data(df, column=None,row='device', color="fabstep",
         pass
     else:
         grid.set(ylim=ylim)
+    if xlabel and ylabel:
+        grid.set_axis_labels(xlabel, ylabel)
+    plt.legend(loc='best', fancybox=True, framealpha=0.5)
     # Adjust the arrangement of the plots
     # grid.fig.tight_layout(w_pad=1)
-    plt.legend(["                  "], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+    # sns.plt.legend(loc='upper left',bbox_to_anchor=(1,0.5))
+    # for ax in grid.axes.flat:
+    #     box = ax.get_position()
+    #     ax.set_position([box.x0,box.y0,box.width*0.85,box.height])
+    # plt.legend(["                  "], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
     if show:
         plt.show()
     if save:
@@ -242,6 +260,7 @@ def tile_data(df, column=None,row='device', color="fabstep",
         grid.savefig("{}.png".format(save))
         # grid.savefig("{}.pdf".format(save))
     plt.close()
+    return grid
 
 ############### Plotting Functions ######################
 
@@ -287,21 +306,27 @@ def single_topgate(df,plot=False):
         tile_data(data, column='device',row=None, color='gate', save='VG20VDS0.1_490_2_topgate', sharey=False)
     else:
         return data
-def metric_plot(df, p1, p2, show=True, save=False, hue_order=fab_order,gate=None,palette=hls,xlim='',column=None,row=None,colwrap=None,sharey=True):
+def metric_plot(df, p1, p2, show=True, save=False, hue_order=fab_order,gate=None,palette=hls,xlim='',column=None,row=None,colwrap=None,sharey=True,color="fabstep",log=True):
     if save:
         save="metric_{}vs{}_{}".format(p1,p2,save)
-    tile_data(df.drop_duplicates(subset=[p1,p2]),column=column,row=row,colwrap=colwrap,x=p1,y=p2,ls='',marker='o',show=show,save=save,hue_order=hue_order,palette=palette,xlim=xlim,sharey=sharey)
+    tile_data(df.drop_duplicates(subset=[p1,p2]),column=column,row=row,colwrap=colwrap,x=p1,y=p2,ls='',marker='o',show=show,save=save,hue_order=hue_order,palette=palette,xlim=xlim,sharey=sharey,color=color,log=log)
 def standard_metrics(df,show=True, save='backgate', palette=hls,xlim=''):
     data = df[(df.parameters=='VG20VDS0.1') & (df.gate=='backgate') ]
-    metric_plot(data, 'junctionMean', 'ONOFF', save=save, show=show, palette=palette)
-    metric_plot(data, 'chip', 'ONOFF', save=save, show=show, palette=palette,xlim=xlim)
-    metric_plot(data, 'junctionMean', 'IDmax', save=save, show=show, palette=palette)
-    metric_plot(data, 'chip', 'IDmax', save=save,show=show, palette=palette,xlim=xlim)
-    metric_plot(data, 'junctionMean', 'IDmin', save=save, show=show, palette=palette)
-    metric_plot(data, 'chip', 'IDmin', save=save,show=show, palette=palette,xlim=xlim)
+    for x in ["junctionMean","tubeMean","chip"]:
+        for y in ["onoff","IDmax","IDmin"]:
+            metric_plot(data, x, y, save=save, show=show, palette=palette,hue_order=None, color="chip")
+def density_metrics(df,show=True,save="backgate", palette=hls,xlim='',log=True):
+    if not log:
+        save=save+"lineary"
+    data = df[(df.parameters=='VG20VDS0.1') & (df.gate=='backgate') ]
+    for y in ["junctionMean","tubeMean","lengthMean","percolation"]:
+        metric_plot(data, "chip", y, save=save, show=show, palette=palette,hue_order=None, color="chip",log=log)
+    metric_plot(data, "tubeMean", "junctionMean", save=save, show=show, palette=palette,hue_order=None, color="chip",log=log)
+
 def topgate_metrics(df,show=True, save='topgate', palette=hls,xlim=''):
     data = df[(df.fabstep=='postTop') & (df.parameters=='VG20VDS0.1')]
-    metric_plot(data,'gateArea', 'ONOFF',save=save,show=show, palette=palette,xlim=xlim)
+    metric_plot(data,'gateArea', 'normalonoff',save=save,show=show, palette=palette,xlim=xlim,sharey=False,color="device",hue_order=None)
+    metric_plot(data,'gateArea', 'onoff',save=save,show=show, palette=palette,xlim=xlim)
     metric_plot(data,'gateArea', 'IDmax',save=save,show=show, palette=palette,xlim=xlim)
     metric_plot(data,'gateArea', 'IDmin',save=save,show=show, palette=palette,xlim=xlim)
 def sonication_metrics(df,show=True, save='sonication', palette=hls,xlim=''):
@@ -309,7 +334,7 @@ def sonication_metrics(df,show=True, save='sonication', palette=hls,xlim=''):
     data.chip=data.device.apply(lambda x:float(x[0:3]) if x[-1]=='1' else float(x[0:3])+0.5)
     metric_plot(df, 'chip', 'IDmax', hue_order=son_order, xlim=(480,496), save=save, show=show)
     metric_plot(df, 'chip', 'IDmin', hue_order=son_order, xlim=(480,496), save=save, show=show)
-    metric_plot(df, 'chip', 'ONOFF', hue_order=son_order, xlim=(480,496), save=save, show=show)
+    metric_plot(df, 'chip', 'onoff', hue_order=son_order, xlim=(480,496), save=save, show=show)
 def sonication_sweeps(df,directory):
     for n in set(df.device):
         tile_data(df[(df.device == n)&(df.sweep == 'transfer')], column="parameters", row=None,color='fabstep',  save="{}plots/COL{}_transferplot".format(directory,n), show=False,sharey=False,hue_order=son_order)

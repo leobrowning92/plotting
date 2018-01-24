@@ -56,23 +56,18 @@ def get_density_distribution(df,n):
     for i in range(n):
         for j in range(n):
             data[-j,-i]=len(df[(df.x<(i+1)*1024//n) & (df.x>=i*1024//n)&(df.y<(j+1)*1024//n)&(df.y>=j*1024//n)])*(n/5.)**2
-    return data
+    return np.reshape(data,n**2)
 def save_density_metrics(fname,tubedata,juncdata,lengths, splits=0):
     lengths=lengths*5/1024
     lengthMeanCorrected=sum(lengths)/(len(lengths)-splits)
     percolationCorrected = calc_percolation(lengthMeanCorrected)
     device=os.path.basename(fname)[4:13]
     data=[[device, np.mean(juncdata), np.std(juncdata), np.mean(tubedata), np.std(tubedata), np.mean(lengths), np.std(lengths),  calc_percolation(lengths),  splits, np.mean(juncdata)-splits/25, np.mean(tubedata)-splits/25, lengthMeanCorrected,percolationCorrected]]
-    columns=["device","junctionMean","junctionStd","tubeMean","tubeStd","lenthMean","lengthStd","percolation", "splits", "junctionMeanCorrected", "tubeMeanCorrected", "lengthMeanCorrected", "percolationCorrected"]
+    columns=["device","junctionMean","junctionStd","tubeMean","tubeStd","lengthMean","lengthStd","percolation", "splits", "junctionMeanCorrected", "tubeMeanCorrected", "lengthMeanCorrected", "percolationCorrected"]
     df=pd.DataFrame(data, columns=columns)
     df.to_csv( fname.replace("_tubes.txt", "_density.csv"), delimiter=',')
 
-
-
-def calc_percolation(lengths):
-    return (4.236**2)/(np.pi*np.mean(lengths)**2)
-
-def plot_image(fname,save=False, show=True):
+def load_distributions(fname):
     dftubes=pd.read_csv(fname, delimiter='\t',usecols=[2,3,4,5])
     dftubes.columns=['x','y','angle','length']
     segs=np.array([get_ends(row) for row in dftubes.values])
@@ -82,9 +77,15 @@ def plot_image(fname,save=False, show=True):
     juncdist=get_density_distribution(dfjunctions, 5)
     spl=pd.read_csv(os.path.join(os.path.dirname(fname),"splits.dat"))
     split=spl.splits[spl.fname==os.path.basename(fname)[:-4]].values[0]
+    return tubedist,juncdist,dftubes,split,segs,junctions
+
+def calc_percolation(lengths):
+    return (4.236**2)/(np.pi*np.mean(lengths)**2)
+
+def plot_image(fname,save=False, show=True):
+
+    tubedist,juncdist,dftubes,split,seqs,junctions=load_distributions(fname)
     save_density_metrics(fname, tubedist, juncdist, dftubes.length.values, splits=split)
-
-
     if save or show:
         fig=plt.figure(figsize=(10,5))
         ax1 = fig.add_subplot(1,2,2)
@@ -101,8 +102,8 @@ def plot_image(fname,save=False, show=True):
         ax1.set_yticklabels([0,1,2,3,4,5])
 
         n=5
-        g=sns.distplot(np.reshape(tubedist,n**2),bins=None,ax=ax2,label="Tubes")
-        g=sns.distplot(np.reshape(juncdist,n**2),bins=None,ax=ax2,label="Junctions")
+        g=sns.distplot(tubedist,bins=None,ax=ax2,label="Tubes")
+        g=sns.distplot(juncdist,bins=None,ax=ax2,label="Junctions")
         g.set_xlabel("Density $/\mu m^2$")
         g.set_ylabel("Count")
         lengths=dftubes.length.values*5/1025
@@ -118,7 +119,7 @@ def plot_image(fname,save=False, show=True):
     if show:
         plt.show()
 def combine_data(folder):
-    cols=["device","junctionMean","junctionStd","tubeMean","tubeStd","lenthMean","lengthStd","percolation", "splits", "junctionMeanCorrected", "tubeMeanCorrected", "lengthMeanCorrected", "percolationCorrected"]
+    cols=["device","junctionMean","junctionStd","tubeMean","tubeStd","lengthMean","lengthStd","percolation", "splits", "junctionMeanCorrected", "tubeMeanCorrected", "lengthMeanCorrected", "percolationCorrected"]
     fnames=glob.glob(folder+"*density.csv")
     data=pd.concat([pd.read_csv(fname) for fname in fnames])
     data.sort_values(by="device",inplace=True)
