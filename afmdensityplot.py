@@ -14,8 +14,9 @@ def plot_segments(ax,  segs=np.array([[[1,2],[2,2]]])  ):
     line_segments = LineCollection(segs,linewidth=0.8,colors='b')
     ax.add_collection(line_segments)
 def plot_tubes(ax,segs,junctions):
+    ax.scatter(junctions[:,0],junctions[:,1],c="r", s=30, linewidth=0.8, marker="x")
     plot_segments(ax,segs)
-    ax.scatter(junctions[:,0],junctions[:,1],c="c", s=30, linewidth=2, marker="x")
+
 def check_intersect(s1,s2):
     #assert that x intervals overlap
     if max(s1[:,0])<min(s2[:,0]):

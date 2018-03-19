@@ -222,13 +222,13 @@ def updownplot(x,y,**kwargs):
 
 def tile_data(df, column=None,row='device', color="fabstep",
             colwrap=None,  show=True, save=False, v=False,  xlim="", ylim="", sharey=True, x="VG", y="ID", log=True, updown=False, palette=hls,
-            col_order=None, hue_order=None, ls='-', marker='', xlabel='', ylabel='', fontscale=1, close=False):
+            col_order=None, hue_order=None, ls='-', marker='', xlabel='', ylabel='', fontscale=1, close=False,hue_kws=None,legend=True):
     if v:
         print("dataframe pre tile_data()")
         get_info(df)
     sns.set(style="ticks",font_scale=fontscale,palette=palette)
     # Initialize a grid of plots with an Axes for each walk
-    grid = sns.FacetGrid(df, col=column, hue=color,row=row, col_wrap=colwrap, size=4,sharey=sharey, col_order=col_order, hue_order=hue_order,legend_out=True)
+    grid = sns.FacetGrid(df, col=column, hue=color,row=row, col_wrap=colwrap, size=4,sharey=sharey, col_order=col_order, hue_order=hue_order,legend_out=True,hue_kws=hue_kws)
     # Draw a line plot to show the trajectory of each random walk
     if updown:
         grid.map(updownplot, x, y,ls=ls,marker=marker)
@@ -247,7 +247,8 @@ def tile_data(df, column=None,row='device', color="fabstep",
         grid.set(ylim=ylim)
     if xlabel and ylabel:
         grid.set_axis_labels(xlabel, ylabel)
-    plt.legend(loc='best', fancybox=True, framealpha=0.5)
+    if legend:
+        plt.legend(loc='best', fancybox=True, framealpha=0.5)
     # Adjust the arrangement of the plots
     # grid.fig.tight_layout(w_pad=1)
     # sns.plt.legend(loc='upper left',bbox_to_anchor=(1,0.5))
