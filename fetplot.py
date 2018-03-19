@@ -160,6 +160,7 @@ def load_to_dataframe(directory,v=True,force=True):
         df['gateArea']=df['gate'].apply(gate_area)
         df['sweep'] = df['temp'].apply(find_sweep)
         df['timestamp']=df['temp'].apply(get_timestamp)
+        df['poissonratio']=df.tubeStd**2/df.tubeMean
         df['uuid']=df['temp'].apply(get_runID)
         df['fname']=df['temp']
         df.drop(['temp'],axis=1,inplace=True)
@@ -220,7 +221,8 @@ def updownplot(x,y,**kwargs):
 
 
 def tile_data(df, column=None,row='device', color="fabstep",
-            colwrap=None,  show=True, save=False, v=False,  xlim="", ylim="", sharey=True, x="VG", y="ID", log=True, updown=False, palette=hls, col_order=None, hue_order=None, ls='-',marker='',xlabel='',ylabel='',fontscale=1):
+            colwrap=None,  show=True, save=False, v=False,  xlim="", ylim="", sharey=True, x="VG", y="ID", log=True, updown=False, palette=hls,
+            col_order=None, hue_order=None, ls='-', marker='', xlabel='', ylabel='', fontscale=1, close=False):
     if v:
         print("dataframe pre tile_data()")
         get_info(df)
@@ -253,13 +255,16 @@ def tile_data(df, column=None,row='device', color="fabstep",
     #     box = ax.get_position()
     #     ax.set_position([box.x0,box.y0,box.width*0.85,box.height])
     # plt.legend(["                  "], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+
+
     if show:
         plt.show()
     if save:
         grid.fig.suptitle(save,y=1.05)
         grid.savefig("{}.png".format(save))
         # grid.savefig("{}.pdf".format(save))
-    plt.close()
+    if close:
+        plt.close()
     return grid
 
 ############### Plotting Functions ######################
