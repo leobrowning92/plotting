@@ -5,14 +5,15 @@ from all files.
     Data Process > PyGwy console > open
 
 then replace the directory variable with the absolute path to the folder containing all of the `.nid` files that you want processed. and hit execute.
+
 ## Image Resizing
-resize images to 1024x1024 pixels and put them in a counting directory
+resize images to 1024x1024 pixels and put them in a counting directory. Uses the ImageMagic command line image processing tool `mogrify`
 
     mkdir counting
     cp *.png counting/
     mogrify -resize 1024x1024 counting/*.png
 
-## Counting in ImageJ
+## Counting junctions in ImageJ
 open an image in image J then go to `Analyze > Set Measurement`
 and make sure only _mean grey area_ is selected if you are doing junction measurements.
 
@@ -25,9 +26,11 @@ select all points, then get the measurements using `ctrl+m`. then use `ctrl+s` t
 
 ## analyzing junction density
 
+This uses the `afmdensityplot` script written using python3 in the root directory of this repo:
+
     afmdensityplot -s $(ls *.txt)
 
-Other options include --show to see the plots as you go.
+Other options include `--show` to see the plots as you go.
 
 ## for measuring tubes
 
