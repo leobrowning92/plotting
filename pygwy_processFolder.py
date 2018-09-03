@@ -1,4 +1,5 @@
 import os
+import gwy
 import gwyutils
 def save_outputs(c,filebase):
    # save fixed file
@@ -23,8 +24,8 @@ for name in os.listdir(directory):
     filebase = filename[0:-4]
     # set colors of first datafield in active container
     c.set_string_by_name("/0/base/palette", "Gwyddion.net")
-    
-    
+
+
     # call 'polylevel' process module to subtract polynomial
     gwy.gwy_process_func_run("polylevel", c, gwy.RUN_IMMEDIATE)
     #correct for line mismatch using median leveling

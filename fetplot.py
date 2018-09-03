@@ -8,7 +8,6 @@ by my automated Parameter analyser scripts
 
 import glob, re, os, sys, time, argparse, hashlib, textwrap
 import matplotlib
-matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 from IPython import embed
 import pandas as pd
@@ -100,11 +99,13 @@ def get_metrics(df,fname,directory):
         df["Ithresh"]=np.nan
         df["Vthresh"]=np.nan
 
-
-    tubedata=pd.read_csv(os.path.join(directory, "all_density_data.csv"))
-    for key in list(tubedata):
-        if key!="device":
-            df[key]=float( tubedata[key][ os.path.basename(fname)[0:9] ==tubedata.device ].values )
+    try:
+        tubedata=pd.read_csv(os.path.join(directory, "all_density_data.csv"))
+        for key in list(tubedata):
+            if key!="device":
+                df[key]=float( tubedata[key][ os.path.basename(fname)[0:9] ==tubedata.device ].values )
+    except:
+        print("error loading density data. ")
     return df
 def gate_area(gate):
     areas={"backgate":3600,"topgate1":600,"topgate2":200,"topgate3":200,"topgate4":600}
@@ -160,7 +161,10 @@ def load_to_dataframe(directory,v=True,force=True):
         df['gateArea']=df['gate'].apply(gate_area)
         df['sweep'] = df['temp'].apply(find_sweep)
         df['timestamp']=df['temp'].apply(get_timestamp)
-        df['poissonratio']=df.tubeStd**2/df.tubeMean
+        try:
+            df['poissonratio']=df.tubeStd**2/df.tubeMean
+        except:
+            print("no tube data")
         df['uuid']=df['temp'].apply(get_runID)
         df['fname']=df['temp']
         df.drop(['temp'],axis=1,inplace=True)
