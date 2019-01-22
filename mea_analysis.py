@@ -102,8 +102,6 @@ def remap_pins(df):
     df = df[['time', "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15", 'trel']]
     return df
 
-
-
 def vdf_to_tensor(vdf):
     size = len(vdf)
     data = vdf.iloc[:, 3:-1].values
@@ -209,12 +207,20 @@ def plot_signal(vdf, sdfo, tr = (0, 10000), vr = (3, 16), colors = c3, save = ''
 
 def plot_principal_components(resd, displaynan = [], show = False, save = False, alpha = 0.5, ls = '', ends = True):
 
+    # from sklearn.decomposition import PCA
     pca = PCA()
+    # resd is an np array where each column is a dimension (voltage channel)
+    # and each row is a measurement of all dimensions (voltage at a time)
     pca.fit(resd)
 
     fig, axes = plt.subplots(nrows = 2, ncols = 2, figsize = (6.3, 6.3))
+
+    # these are the principal component vectors
     pc = pca.components_
+    # adds in empty values to allow 4x4 display of vectors
     display_pc = np.insert(pc, displaynan, np.nan, axis = 1)
+
+    # Plots each of the first 3 principal components
     for i in range(1, 3):
         im = axes.flat[i].imshow(np.insert(display_pc[i-1], [0, 14], np.nan).reshape((4, 4)), cmap = 'viridis')
         axes.flat[i].axis('off')
@@ -229,14 +235,19 @@ def plot_principal_components(resd, displaynan = [], show = False, save = False,
         cb.set_ticks([cmin + (0.1*span), cmax - (0.1*span)])
         cb.set_ticklabels(["{:.2f}".format(cmin + (0.1*span)), "{:.2f}".format(cmax - (0.1*span))])
         cb.set_label("relative correlation")
+
+    # plots the relative variance that is due to each of the pc vectors
     axes.flat[0].plot(pca.explained_variance_ratio_ , 'ro')
     axes.flat[0].set_ylabel('relative variation ratio')
     axes.flat[0].set_xlabel('principal component')
+
+    # projects the observed measurements when projected
+    # on to the first two principal components by default
     plot_pca_projection(resd, pca.explained_variance_ratio_ , pca.components_, axes.flat[3], alpha = alpha, ls = ls, ends = ends)
-    # print(axes.flat[3].get_ylabel())
     axes.flat[3].set_ylabel('$p_1$')
     axes.flat[3].set_xlabel('$p_0$')
-    # print(axes.flat[3].get_ylabel())
+
+    #formatting
     for i in range(len(axes.flat)):
         axes.flat[i].text(-0.15, 1.05, sublabels[i], horizontalalignment = 'left',  verticalalignment = 'center', transform = axes.flat[i].transAxes, color = 'k', size = 'large',
         weight = 'bold')
@@ -247,19 +258,42 @@ def plot_principal_components(resd, displaynan = [], show = False, save = False,
 
     return fig, axes
 
-def plot_pca_projection(resd, s, u, ax = None, components = (0, 1), ls = '', alpha = 0.5, show = False, save = False, ends = True):
+
+def plot_pca_projection(resd, vari_ratio, pc, ax = None, components = (0, 1), ls = '', alpha = 0.5, show = False, save = False, ends = True):
+        """Projects a dataset on to 2 of its principal components.
+        and produces a 2D scatter plot of that data.
+
+        Args:
+            resd (np.array): numpy array with columns = dimensions and
+                rows = measurements
+            vari_ratio (np.array): the variance ratio of the principal components
+            pc (np.array): principal component vectors as from
+                sklearn.decomposition.PCA
+            ax (mpl axis): optional axis. Defaults to None.
+            components (2d tupple): which two principal components to
+                project on to. Defaults to (0, 1).
+            ls (string): mpl linestyle. Defaults to ''.
+            alpha (float [0,1]): alpha of points. Defaults to 0.5.
+            show (bool): show a figure when finished. Defaults to False.
+            save (str or bool): filename to save, or False. Defaults to False.
+            ends (bool): whether to plot start and end of projection.
+                Defaults to True.
+
+        Returns:
+            Nothing, but optionally displays the plot or saves it to disk.
+
+        """
+
     if not(ax):
-
         fig, ax = plt.subplots(figsize = (6.3, 6.3))
-    ax.plot(resd.dot(u[components[0]]), resd.dot(u[components[1]]), ls = ls, marker = '.', alpha = alpha, label = "data projection")
+    # projection of the measurements in resd on to the principal components
+    ax.plot(resd.dot(pc[components[0]]), resd.dot(pc[components[1]]), ls = ls, marker = '.', alpha = alpha, label = "data projection")
     if ends:
-        ax.plot(resd.dot(u[components[0]])[0], resd.dot(u[components[1]])[0], 'ro', label = "start")
-        ax.plot(resd.dot(u[components[0]])[-1], resd.dot(u[components[1]])[-1], 'kx', label = "end")
-    ax.set_xlabel('s[{}] = {:0.2f}'.format(components[0], s[components[0]]))
-    ax.set_ylabel('s[{}] = {:0.2f}'.format(components[1], s[components[1]]))
+        ax.plot(resd.dot(pc[components[0]])[0], resd.dot(pc[components[1]])[0], 'ro', label = "start")
+        ax.plot(resd.dot(pc[components[0]])[-1], resd.dot(pc[components[1]])[-1], 'kx', label = "end")
+    ax.set_xlabel('s[{}] = {:0.2f}'.format(components[0], vari_ratio[components[0]]))
+    ax.set_ylabel('s[{}] = {:0.2f}'.format(components[1], vari_ratio[components[1]]))
     # ax.legend()
-
-
     if save:
         plt.tight_layout()
         plt.savefig(save+'.png')
