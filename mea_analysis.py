@@ -260,7 +260,8 @@ def plot_principal_components(resd, displaynan = [], show = False, save = False,
 
 
 def plot_pca_projection(resd, vari_ratio, pc, ax = None, components = (0, 1), ls = '', alpha = 0.5, show = False, save = False, ends = True):
-        """Projects a dataset on to 2 of its principal components.
+    """
+        Projects a dataset on to 2 of its principal components.
         and produces a 2D scatter plot of that data.
 
         Args:
@@ -281,8 +282,7 @@ def plot_pca_projection(resd, vari_ratio, pc, ax = None, components = (0, 1), ls
 
         Returns:
             Nothing, but optionally displays the plot or saves it to disk.
-
-        """
+    """
 
     if not(ax):
         fig, ax = plt.subplots(figsize = (6.3, 6.3))
