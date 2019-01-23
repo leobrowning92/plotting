@@ -139,7 +139,7 @@ def analyze_events(smudf, gthresh):
     dg[0] = [0,0] # corrects for g[0] - g[-1] in preveous line
 
     # all dg that are above gthresh, including their time data
-    dgthresh = np.array([point for point in dg if abs(point[0])> = gthresh])
+    dgthresh = np.array([point for point in dg if abs(point[0])>= gthresh])
 
     #array of the time between switching events
     iei = np.array([dgthresh[i+1, 1] - dgthresh[i, 1] for i in range(len(dgthresh) - 1)])
@@ -212,7 +212,28 @@ def plot_signal(vdf, sdfo, tr = (0, 10000), vr = (3, 16), colors = c3, save = ''
         plt.close()
 
 
+
 def plot_principal_components(resd, displaynan = [], show = False, save = False, alpha = 0.5, ls = '', ends = True):
+    """
+        calculates the principal components of the data resd, and then plots their relative variance, the first to components and the projection of the data on to those first two components. asumes len(16) data.
+
+        Args:
+            resd (np.array): numpy array with columns = dimensions and rows = measurements
+            displaynan (list): Columns to omit from display due to dead channels
+            show (bool): show a figure when finished. Defaults to False.
+            save (str or bool): filename to save, or False. Defaults to False.
+            alpha (type): Alpha value of points in scatter plot of raw data projected on to (p0, p1). Defaults to 0.5.
+            ls (type): scatter plot linestyle. Defaults to ''.
+            ends (type): whether or not to plot the start and end points of the time series in projection. Defaults to True.
+
+        Returns:
+            fig (mpl figure object): figure object
+            axes (mpl axes list): the axes used for plotting
+    """
+
+    # This step is VITAL for reasonable PCA. without some form of normalization
+    # PCA will fail utterly
+    resd=np.array([(point-point.mean())/point.mean() for point in resd])
 
     # from sklearn.decomposition import PCA
     pca = PCA()
@@ -307,9 +328,6 @@ def plot_pca_projection(resd, vari_ratio, pc, ax = None, components = (0, 1), ls
     if show:
         pass
 
-
-
-
 def plot_timeslice(tensor, index, ax):
     im = ax.imshow(tensor[index], cmap = 'viridis', interpolation = 'nearest')
     ax.axis('off')
@@ -327,7 +345,7 @@ def plot_timeslice(tensor, index, ax):
 def show_timeslices(tensor, indices, absolute = True):
     size = len(indices)
 
-    if size> = 3:
+    if size >= 3:
         ncols = 3
         nrows = size//3
     else:
@@ -338,7 +356,6 @@ def show_timeslices(tensor, indices, absolute = True):
     for i in range(size):
         plot_timeslice(tensor, indices[i], axes.flat[i])
     return fig
-
 
 def show_timeseries(tensor, start, stop):
     size = stop - start
@@ -354,9 +371,6 @@ def show_timeseries(tensor, start, stop):
     # fig.colorbar(im, cax = cbar_ax, label = 'Network Point Voltage (V)')
     return fig
 
-
-
-
 def plot_loglog(data, ax = None):
     dfig = matplotlib.figure.Figure()
     dax = matplotlib.axes.Axes(dfig, (0, 0, 0, 0))
@@ -371,7 +385,7 @@ def plot_loglog(data, ax = None):
     x = []
     y = []
     for i in range(len(n)):
-        if n[i]! = 0:
+        if n[i] != 0:
             x.append(b[i])
             y.append(n[i])
     x = np.array(x)
