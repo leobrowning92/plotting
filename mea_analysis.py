@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+"""
+    File name: mea_analysis.py
+    Author: Leo Browning
+    email: leobrowning92@gmail.com
+    Description:
+    Bunch of functions for the analysis and plotting of multichanel voltage data collected from a PXI4303.
+"""
 import os, re, glob
 import pandas as pd
 import numpy as np
