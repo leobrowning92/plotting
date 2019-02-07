@@ -231,8 +231,7 @@ def plot_principal_components(resd, displaynan = [], show = False, save = False,
             axes (mpl axes list): the axes used for plotting
     """
 
-    # This step is VITAL for reasonable PCA. without some form of normalization
-    # PCA will fail utterly
+    # This step is VITAL for reasonable PCA. without some form of normalization pca is pretty odd.
     resd=np.array([(point-point.mean())/point.mean() for point in resd])
 
     # from sklearn.decomposition import PCA
