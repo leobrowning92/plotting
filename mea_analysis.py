@@ -373,16 +373,21 @@ def show_timeseries(tensor, start, stop):
 def plot_loglog(data, ax = None):
     dfig = matplotlib.figure.Figure()
     dax = matplotlib.axes.Axes(dfig, (0, 0, 0, 0))
+    # n is the value (height) of each bin
+    # b is the list of bin edges
+    # p is a plotting feature
     n, b, p = dax.hist(np.abs(data), bins = 20)
     del dax, dfig
     if not(ax):
         fig, ax = plt.subplots(figsize = (3, 3))
     # ax.loglog(b[1:], n, 'ro')
 
-    # plt.show()
+    # normalizes the his heights to 1, ie turns them in to probabilities
     n = n/len(data)
     x = []
     y = []
+    
+    #adds each n to x, with its corresponding bin edge, and removes 0 values
     for i in range(len(n)):
         if n[i] != 0:
             x.append(b[i])
@@ -395,6 +400,7 @@ def plot_loglog(data, ax = None):
         return np.exp(c)*x**a
     def linear(x, m, c):
         return m*x+c
+    # linear fit to the log log probability data
     p, dp = opt.curve_fit(linear, lx, ly)
     # print(p, dp)
     ax.loglog(x, y, 'ro')
