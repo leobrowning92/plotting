@@ -249,14 +249,17 @@ def plot_principal_components(resd, displaynan = [], show = False, save = False,
 
     # Plots each of the first 3 principal components
     for i in range(1, 3):
-        im = axes.flat[i].imshow(np.insert(display_pc[i-1], [0, 14], np.nan).reshape((4, 4)), cmap = 'viridis')
+        vector = np.insert(display_pc[i - 1], [0, 14], np.nan).reshape((4, 4))
+        vrange=np.nanmax(abs(vector))
+        print(vrange)
+        im = axes.flat[i].imshow(vector, cmap = 'bwr',vmax=vrange,vmin=-vrange)
         axes.flat[i].axis('off')
         axes.flat[i].set_title("$s$ = {:0.2f}".format(pca.explained_variance_ratio_ [i-1]))
         divider = make_axes_locatable(axes.flat[i])
         cax = divider.append_axes('bottom', size = '10%', pad = 0.1)
         cb = plt.colorbar(im, cax = cax, orientation = 'horizontal', label = "V", format = '%.2f')
-        cmin = np.nanmin(display_pc[i-1])           # colorbar min value
-        cmax = np.nanmax(display_pc[i-1])
+        cmin = -vrange           # colorbar min value
+        cmax = vrange
         span = cmax - cmin
 
         cb.set_ticks([cmin + (0.1*span), cmax - (0.1*span)])
@@ -404,7 +407,7 @@ def plot_loglog(data, ax = None):
     p, dp = opt.curve_fit(linear, lx, ly)
     # print(p, dp)
     ax.loglog(x, y, 'ro')
-    ax.plot(x, powerlaw(x, *p), 'k-', label = "$\\alpha =${:.2f}$\pm${:.2f}".format(p[0], dp[0, 0]))
+    ax.plot(x, powerlaw(x, *p), 'k-', label = "$\\alpha =${:.2f}$\pm${:.2f}".format(p[0], np.sqrt(dp[0, 0])))
     ax.legend()
 
     # plt.legend()
