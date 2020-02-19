@@ -4,12 +4,11 @@ This collection of scripts is 100% a single user personal collection. I make no 
 
 If you see something you want to chat about, im happy to help :)
 
-### tips
-for ease of use, can add fetplot and afmdensityplot to your path
-for ubuntu use
+### Mea analysis getting started
+To get all the required packages run:
 
-    ln -s ~/gitrepos/plotting/fetplot.py ~/.local/bin/fetplot
+    pip install -r requirements.txt
 
-or add the whole folder to your python virtualenv using the virtualenvwrapper command:
+then run the `mea_example.py` file to see how the code works on the example data by running:
 
-    add2virtualenv ~/gitrepos/plotting/
+    python mea_example.py
