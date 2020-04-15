@@ -43,6 +43,24 @@ def format_axis(ax):
     ax.spines["right"].set_visible(True)
     ax.spines["top"].set_visible(True)
 
+def open_lvm_asdf(path, v=False):
+    tfile = LvmFile(path)
+    rootobject = tfile.object()
+    df = tfile.as_dataframe()
+    cols = []
+    for header in list(df):
+        header = re.sub("['/]", "", header)[8:]
+        header = header.replace("Voltage_", "v")
+        header = header.replace("Untitled", "current")
+        header = header.replace("Time", "time")
+        cols.append(header)
+    df.columns = cols
+    df["trel"] = df.time - df.time.iloc[0]
+    df.trel = pd.to_numeric(df.trel) / 1000000000
+
+    if v:
+        df.info()
+    return df
 
 def open_tdms_asdf(path, v=False):
     tfile = TdmsFile(path)
