@@ -12,7 +12,7 @@ def checkdir(directoryname):
         os.system("mkdir " + directoryname)
     pass
 
-# plotting functions
+# utils functions
 def plot_IV(path, skip=1, delim=",", show=False,
             title='IV', xlabel='V', ylabel='I', data1="y1", log=False):
     """

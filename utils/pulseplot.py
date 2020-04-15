@@ -112,7 +112,7 @@ def plot_all(directory,v=True,show=True,save=True,force=False):
 
 
             if v:
-                print("plotting data for: {}".format(fname))
+                print("utils data for: {}".format(fname))
             if show:
                 plt.show()
             if save:
@@ -128,7 +128,7 @@ if __name__ == "__main__":
                 plotall   -  plots all data for each chip on a seperate plot and store in subdir plots/
                 test      -  simply loads datasets use -i for interactive and -f to force reload"""))
     parser.add_argument("function", type=str, choices=["test","plotall"],
-        help="what plotting function to use: %(choices)s")
+        help="what utils function to use: %(choices)s")
     parser.add_argument("directory",type=str, help="The directory containing the data folder to analyse",nargs='+')
     parser.add_argument("--show", action="store_true")
     parser.add_argument("-s", "--save", action="store_true")

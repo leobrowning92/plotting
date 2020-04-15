@@ -33,7 +33,7 @@ for path in paths:
                 print (path + "\nplotted")
                 print ("----------")
             except Exception as e:
-                print('error while plotting : \n ' + path)
+                print('error while utils : \n ' + path)
                 print(e)
 
         elif "diode" in path:
@@ -42,7 +42,7 @@ for path in paths:
                 print (path + "\nplotted")
                 print ("----------")
             except Exception as e:
-                print('error while plotting : \n ' + path)
+                print('error while utils : \n ' + path)
                 print(e)
         else:
             print (name + "unprocessed, uspecified plot type Try including 'FET' or 'diode' in the filename")

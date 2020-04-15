@@ -4,7 +4,7 @@
     Author: Leo Browning
     email: leobrowning92@gmail.com
     Description:
-    Bunch of functions for the analysis and plotting of multichanel voltage data collected from a PXI4303.
+    Bunch of functions for the analysis and utils of multichanel voltage data collected from a PXI4303.
 """
 import os, re, glob
 import pandas as pd
@@ -318,7 +318,7 @@ def plot_principal_components(
 
         Returns:
             fig (mpl figure object): figure object
-            axes (mpl axes list): the axes used for plotting
+            axes (mpl axes list): the axes used for utils
     """
 
     # This step is VITAL for reasonable PCA. without some form of normalization pca is pretty odd.
@@ -525,7 +525,7 @@ def plot_loglog(data, ax=None):
     dax = matplotlib.axes.Axes(dfig, (0, 0, 0, 0))
     # n is the value (height) of each bin
     # b is the list of bin edges
-    # p is a plotting feature
+    # p is a utils feature
     n, b, p = dax.hist(np.abs(data), bins=20)
     del dax, dfig
     if not (ax):
@@ -568,7 +568,7 @@ def plot_loglog(data, ax=None):
     # plt.legend()
 
 
-# MEA plotting functions
+# MEA utils functions
 def plot_events(dg, axes):
     axes[0].eventplot(dg[:, 1], linewidths=1, alpha=1)
     axes[0].set_xlim((0, 100))

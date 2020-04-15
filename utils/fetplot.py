@@ -2,7 +2,7 @@
 """
 Author: Leo Browning
 
-Script contains functions for the plotting of data as collected
+Script contains functions for the utils of data as collected
 by my automated Parameter analyser scripts
 """
 
@@ -286,7 +286,7 @@ def plotchips(directory,v=True,show=True,save=True,force=False):
     for n in set(df.device):
         try:
             if v:
-                print("plotting data for COL{}".format(n))
+                print("utils data for COL{}".format(n))
             tile_data(df[(df.device == n)&(df.sweep == 'transfer')], column="parameters", row='fabstep',color='gate',  save="{}plots/COL{}_transferplot".format(directory,n), show=show,sharey=False)
             tile_data(df[(df.device == n)&(df.sweep == 'output')],column='gate',row='fabstep',color='VG', save="{}plots/COL{}_outputplot".format(directory,n),show=show, x="VDS",log=False)
         except Exception as e:
@@ -360,7 +360,7 @@ if __name__ == "__main__":
 
     # required arguments
     parser.add_argument("function", type=str, choices=["plotall", "collect", "tile","test"],
-        help="what plotting function to use: %(choices)s")
+        help="what utils function to use: %(choices)s")
     parser.add_argument("directory",type=str, help="The directory containing the data folder to analyse",nargs='+')
 
     # optional flags

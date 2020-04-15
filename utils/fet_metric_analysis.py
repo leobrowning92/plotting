@@ -115,10 +115,10 @@ def plot_metric_difference(folder1,folder2,save,show,search=''):
 
 if __name__ == "__main__":
     #two cases
-    # for plotting the metrics for a single data folder
+    # for utils the metrics for a single data folder
     if len(sys.argv) == 3:
         plot_metrics(sys.argv[1],save=False,show=True,search=sys.argv[2])
-    # for plotting the metrics for a single data folder
+    # for utils the metrics for a single data folder
     elif len(sys.argv)== 4:
         plot_metrics(sys.argv[1],save=True,show=True,search=sys.argv[3])
         plot_metrics(sys.argv[2],save=True,show=True,search=sys.argv[3])

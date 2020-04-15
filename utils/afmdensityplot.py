@@ -190,7 +190,7 @@ def process_points(fname,save=False, show=True):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser( formatter_class=argparse.RawDescriptionHelpFormatter, description=textwrap.dedent("""\
-            For plotting AFM junction densities"""))
+            For utils AFM junction densities"""))
 
     parser.add_argument("folder", type=str, help="folder holding counted text files")
     parser.add_argument("--show", action="store_true")

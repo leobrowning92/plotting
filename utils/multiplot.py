@@ -257,7 +257,7 @@ class sequentialMeasurements(object):
                 i.make_sawtoothGV_fig(v=v)
         def save_plots(self,tag='',v=False):
             if v:
-                print ("beginning plotting sequence")
+                print ("beginning utils sequence")
             if os.path.isdir("plots") == False:
                 os.system("mkdir " +self.dir+ "plots/")
             for i in self.datasets:

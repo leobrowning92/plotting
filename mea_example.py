@@ -1,6 +1,6 @@
 import os
 import matplotlib.pyplot as plt
-from plotting import mea_analysis as mea
+from utils import mea_analysis as mea
 
 # checks and creates output folders
 if not (os.path.isdir("plots")):
