@@ -349,6 +349,13 @@ def plot_principal_components(
     pca.fit(resd)
 
     fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(6.3, 6.3))
+    
+    # plots the relative variance that is due to each of the pc vectors
+    axes.flat[0].plot(pca.explained_variance_ratio_, "ro")
+    axes.flat[0].set_ylabel("relative variation ratio")
+    axes.flat[0].set_xlabel("principal component")
+    
+    
 
     # these are the principal component vectors
     pc = pca.components_
@@ -379,10 +386,7 @@ def plot_principal_components(
         )
         cb.set_label("relative correlation")
 
-    # plots the relative variance that is due to each of the pc vectors
-    axes.flat[0].plot(pca.explained_variance_ratio_, "ro")
-    axes.flat[0].set_ylabel("relative variation ratio")
-    axes.flat[0].set_xlabel("principal component")
+
 
     # projects the observed measurements when projected
     # on to the first two principal components by default
