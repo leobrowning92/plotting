@@ -43,6 +43,7 @@ def format_axis(ax):
     ax.spines["right"].set_visible(True)
     ax.spines["top"].set_visible(True)
 
+
 def open_lvm_asdf(path, v=False):
     tfile = LvmFile(path)
     rootobject = tfile.object()
@@ -81,15 +82,14 @@ def open_tdms_asdf(path, v=False):
         df.info()
     return df
 
-
-def open_data(basepath):
+def open_data(basepath,smudf,vdf):
     """
     Opens the data saved by the PXI system measuring current through a voltage
-    sourcing SMU, and voltage across multiple channels of the multichanel
+    sourcing SMU, and voltage across multiple channels of the multichannel
     voltage measurement.
 
     Args:
-        basepath (str): the filename of the SMU data in tdms format. ie
+        basepath (str): the filename of the SMU data in tdms or csv format. ie
             MEA015_postS_100mV_SMU.tdms
 
     Returns:
@@ -104,8 +104,6 @@ def open_data(basepath):
         MEA015_postS_100mV_SMU.tdms
     The code will not function without the driving voltage with units of mV or V and underscores in it ie "_10V_". Additionally there MUST be two files which are identical except for the SMU or V in the filename. This is something that could be changed, but for the moment is how I have written it.
     """
-    smudf = open_tdms_asdf(basepath)
-    vdf = open_tdms_asdf(basepath.replace("SMU", "V"))
     V = False
     if not (re.search("(\d+)V", basepath)):
         V = int(re.search("(\d+)mV", basepath).group(1))
@@ -119,7 +117,6 @@ def open_data(basepath):
         g0 = 7.75e-5  # quantum conductance
         smudf["conductance"] = smudf.current / smudf.voltage / g0
     return smudf, vdf
-
 
 def remap_pins(df):
     """This ONLY needs to be used for any data taken before 2018-06-19"""
@@ -320,14 +317,13 @@ def plot_signal(
 
 
 def plot_principal_components(
-    resd, displaynan=[], show=False, save=False, alpha=0.5, ls="", ends=True
+    resd, faulty_channels, show=False, save=False, alpha=0.5, ls="", ends=True
 ):
     """
-        calculates the principal components of the data resd, and then plots their relative variance, the first to components and the projection of the data on to those first two components. asumes len(16) data.
-
+        calculates the principal components of the data resd, and then plots their relative variance, the first two components and the projection of the data on to those first two components. Assumes len(16) data.
         Args:
             resd (np.array): numpy array with columns = dimensions and rows = measurements
-            displaynan (list): Columns to omit from display due to dead channels
+            faulty_channels (list): Columns to omit from display due to dead channels
             show (bool): show a figure when finished. Defaults to False.
             save (str or bool): filename to save, or False. Defaults to False.
             alpha (type): Alpha value of points in scatter plot of raw data projected on to (p0, p1). Defaults to 0.5.
