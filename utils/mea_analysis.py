@@ -356,7 +356,7 @@ def plot_principal_components(
     # these are the principal component vectors
     pc = pca.components_
     # adds in empty values to allow 4x4 display of vectors
-    display_pc = np.insert(pc, displaynan, np.nan, axis=1)
+    display_pc = np.insert(pc, faulty_channels, np.nan, axis=1)
 
     # Plots each of the first 3 principal components
     for i in range(1, 3):
@@ -479,8 +479,8 @@ def plot_pca_projection(
             "kx",
             label="end",
         )
-    ax.set_xlabel("s[{}] = {:0.2f}".format(components[0], vari_ratio[components[0]]))
-    ax.set_ylabel("s[{}] = {:0.2f}".format(components[1], vari_ratio[components[1]]))
+    #ax.set_xlabel("s[{}] = {:0.2f}".format(components[0], vari_ratio[components[0]]))
+    #ax.set_ylabel("s[{}] = {:0.2f}".format(components[1], vari_ratio[components[1]]))
     # ax.legend()
     if save:
         plt.tight_layout()
