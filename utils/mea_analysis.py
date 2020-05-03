@@ -268,12 +268,12 @@ def plot_voltages(vdf, ax, tr=(0, 10000), vr=(3, 16), colors=c3, remove_channels
 def plot_signal(
     vdf,
     sdfo,
+    faulty_channels,
     tr=(0, 10000),
     vr=(3, 16),
     colors=c3,
     save="",
     show=False,
-    remove_channels=[],
     time_correction=0,
     title=True,
 ):
