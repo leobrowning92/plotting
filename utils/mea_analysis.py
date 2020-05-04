@@ -14,6 +14,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.gridspec as gridspec
+import matplotlib.cm as cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from sklearn.decomposition import PCA
 from matplotlib.font_manager import FontProperties
@@ -246,32 +247,36 @@ def plot_conductance(sdf, ax, tr=(0, 10000)):
     ax.ticklabel_format(style="plain", axis="both", useOffset=False)
 
 
-def plot_voltages(vdf, ax, tr=(0, 10000), vr=(3, 16), colors=c3, remove_channels=[]):
+def plot_voltages(vdf, ax, tr, remove_channels):
     vdf = vdf[(vdf.trel > tr[0]) & (vdf.trel < tr[1])]
-    for i in range(*vr):
+    num_channels = 16
+    cmap = cm.rainbow(np.linspace(0,1,num_channels))
+    ax.set_prop_cycle('color', cmap.tolist())
+    
+    for i in range(num_channels):
         if i in remove_channels:
             pass
         else:
             ax.plot(
                 vdf.trel,
                 vdf[list(vdf)[i + 1]],
-                color=colors[(i - 1) % len(colors)],
                 alpha=1,
-                linewidth=0.5,
+                linewidth=1,
             )
-
+    
     ax.set_xlabel("Time (s)", fontsize=12)
     ax.set_ylabel("Voltage (V)", fontsize=12)
     ax.tick_params(direction="in", which="both")
+    ax.legend([f"v{i}" for i in range(16)], ncol=4)
+    
+    
 
 
 def plot_signal(
     vdf,
     sdfo,
-    faulty_channels,
+    remove_channels,
     tr=(0, 10000),
-    vr=(3, 16),
-    colors=c3,
     save="",
     show=False,
     time_correction=0,
@@ -279,9 +284,9 @@ def plot_signal(
 ):
     sdf = sdfo.copy()
     sdf.trel = sdf.trel + time_correction
-    fig, axes = plt.subplots(nrows=2, figsize=(6.3, 6.3))
+    fig, axes = plt.subplots(nrows=2, figsize=(12.6, 12.6))
     plot_conductance(sdf, axes.flat[0], tr)
-    plot_voltages(vdf, axes.flat[1], tr, vr, colors, remove_channels)
+    plot_voltages(vdf, axes.flat[1], tr, remove_channels)
     for label in (
         axes.flat[1].get_xticklabels()
         + axes.flat[1].get_yticklabels()
