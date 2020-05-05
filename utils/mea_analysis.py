@@ -20,7 +20,7 @@ from sklearn.decomposition import PCA
 from matplotlib.font_manager import FontProperties
 import scipy.optimize as opt
 
-sublabels = ["(a)", "(b)", "(c)", "(d)", "(e)", "(f)"]
+sublabels = ["(a)", "(b)", "(c)", "(d)", "(e)", "(f)", "(g)", "(h)", "(i)", "(j)", "(k)", "(l)", "(m)", "(n)", "(o)", "(p)"]
 substyle = FontProperties()
 substyle.set_size = "large"
 substyle.set_weight = "bold"
@@ -236,7 +236,8 @@ def plot_cmap(c, ax=False):
     ax.axis("off")
 
 
-def plot_conductance(sdf, ax, tr=(0, 10000)):
+def plot_conductance(sdf, ax, tr):
+    
     sdf = sdf[(sdf.trel > tr[0]) & (sdf.trel < tr[1])]
     ax.plot(sdf.trel, sdf.conductance, "g-")
     ax.set_xlabel("Time (s)", fontsize=12)
@@ -248,12 +249,16 @@ def plot_conductance(sdf, ax, tr=(0, 10000)):
 
 
 def plot_voltages(vdf, ax, tr, remove_channels):
+    
     vdf = vdf[(vdf.trel > tr[0]) & (vdf.trel < tr[1])]
-    num_channels = 16
+    
+    channels = list(set([i for i in range(16)])-set(remove_channels))
+    num_channels = len(channels)
+    
     cmap = cm.rainbow(np.linspace(0,1,num_channels))
     ax.set_prop_cycle('color', cmap.tolist())
     
-    for i in range(num_channels):
+    for i in range(16):
         if i in remove_channels:
             pass
         else:
@@ -267,26 +272,48 @@ def plot_voltages(vdf, ax, tr, remove_channels):
     ax.set_xlabel("Time (s)", fontsize=12)
     ax.set_ylabel("Voltage (V)", fontsize=12)
     ax.tick_params(direction="in", which="both")
-    ax.legend([f"v{i}" for i in range(16)], ncol=4)
-    
-    
+    ax.legend([f"v{channel + 1}" for channel in channels], ncol=4)
 
 
+def plot_grouped_voltages(vdf, ax, tr, remove_channels, colors=c3):
+    
+    vdf = vdf[(vdf.trel > tr[0]) & (vdf.trel < tr[1])]
+    
+    channels = list(set([i for i in range(16)])-set(remove_channels))
+    
+    for i in range(16):
+        if i in remove_channels:
+            pass
+        else:
+            ax.plot(
+                vdf.trel,
+                vdf[list(vdf)[i + 1]],
+                color=colors[i],
+                alpha=1,
+                linewidth=0.5,
+            )
+
+    ax.set_xlabel("Time (s)", fontsize=12)
+    ax.set_ylabel("Voltage (V)", fontsize=12)
+    ax.tick_params(direction="in", which="both")
+    ax.legend([f"v{channel + 1}" for channel in channels], ncol=4)
+    
 def plot_signal(
     vdf,
-    sdfo,
+    sdf,
     remove_channels,
-    tr=(0, 10000),
+    tr,
+    show,
+    grouped,
     save="",
-    show=False,
-    time_correction=0,
     title=True,
 ):
-    sdf = sdfo.copy()
-    sdf.trel = sdf.trel + time_correction
-    fig, axes = plt.subplots(nrows=2, figsize=(12.6, 12.6))
+    fig, axes = plt.subplots(nrows=2, figsize=(10, 10))
     plot_conductance(sdf, axes.flat[0], tr)
-    plot_voltages(vdf, axes.flat[1], tr, remove_channels)
+    if grouped:
+        plot_grouped_voltages(vdf, axes.flat[1], tr, remove_channels, colors=c3)
+    else:
+        plot_voltages(vdf, axes.flat[1], tr, remove_channels)
     for label in (
         axes.flat[1].get_xticklabels()
         + axes.flat[1].get_yticklabels()
@@ -319,6 +346,40 @@ def plot_signal(
         pass
     else:
         plt.close()
+
+        
+def plot_stacked_voltages(
+    vdf,
+    remove_channels,
+    tr,
+    show,
+    save="",
+    time_correction=0,
+    title=True,
+):
+    fig, axes = plt.subplots(nrows=16, ncols=1, figsize=(10, 40))
+    vdf = vdf[(vdf.trel > tr[0]) & (vdf.trel < tr[1])]
+    channels = list(set([i for i in range(16)])-set(remove_channels))
+    num_channels = len(channels)
+    for i in range(16):
+        if i in remove_channels:
+            pass
+        else:
+            axes.flat[i].plot(
+                vdf.trel,
+                vdf[list(vdf)[i + 1]],
+                alpha=1,
+                linewidth=1,
+                )
+            axes.flat[i].set_xlabel("Time (s)", fontsize=12)
+            axes.flat[i].set_ylabel("Voltage (V)", fontsize=12)
+            axes.flat[i].set_ylim(ymin=-15,ymax=15)
+            axes.flat[i].tick_params(direction="in", which="both")
+            axes.flat[i].set_title(f"channel {i + 1}")
+            labels = axes.flat[i].get_xticklabels() + axes.flat[i].get_yticklabels()
+            for label in labels:
+                label.set_fontsize(12)
+    plt.tight_layout()
 
 
 def plot_principal_components(
