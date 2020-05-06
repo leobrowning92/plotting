@@ -271,8 +271,9 @@ def plot_voltages(vdf, ax, tr, remove_channels):
     
     ax.set_xlabel("Time (s)", fontsize=12)
     ax.set_ylabel("Voltage (V)", fontsize=12)
+    ax.set_ylim(ymin=-15,ymax=15)
     ax.tick_params(direction="in", which="both")
-    ax.legend([f"v{channel + 1}" for channel in channels], ncol=4)
+    ax.legend([f"v{channel + 1}" for channel in channels], ncol=8)
 
 
 def plot_grouped_voltages(vdf, ax, tr, remove_channels, colors=c3):
@@ -295,6 +296,7 @@ def plot_grouped_voltages(vdf, ax, tr, remove_channels, colors=c3):
 
     ax.set_xlabel("Time (s)", fontsize=12)
     ax.set_ylabel("Voltage (V)", fontsize=12)
+    ax.set_ylim(ymin=-15,ymax=15)
     ax.tick_params(direction="in", which="both")
     ax.legend([f"v{channel + 1}" for channel in channels], ncol=4)
     
@@ -308,7 +310,7 @@ def plot_signal(
     save="",
     title=True,
 ):
-    fig, axes = plt.subplots(nrows=2, figsize=(10, 10))
+    fig, axes = plt.subplots(nrows=2, figsize=(10, 8))
     plot_conductance(sdf, axes.flat[0], tr)
     if grouped:
         plot_grouped_voltages(vdf, axes.flat[1], tr, remove_channels, colors=c3)
@@ -357,7 +359,7 @@ def plot_stacked_voltages(
     time_correction=0,
     title=True,
 ):
-    fig, axes = plt.subplots(nrows=16, ncols=1, figsize=(10, 40))
+    fig, axes = plt.subplots(nrows=4, ncols=4, figsize=(15, 10))
     vdf = vdf[(vdf.trel > tr[0]) & (vdf.trel < tr[1])]
     channels = list(set([i for i in range(16)])-set(remove_channels))
     num_channels = len(channels)
@@ -383,13 +385,13 @@ def plot_stacked_voltages(
 
 
 def plot_principal_components(
-    resd, faulty_channels, show=False, save=False, alpha=0.5, ls="", ends=True
+    resd, remove_channels, show=False, save=False, alpha=0.5, ls="", ends=True
 ):
     """
         calculates the principal components of the data resd, and then plots their relative variance, the first two components and the projection of the data on to those first two components. Assumes len(16) data.
         Args:
             resd (np.array): numpy array with columns = dimensions and rows = measurements
-            faulty_channels (list): Columns to omit from display due to dead channels
+            remove_channels (list): Columns to omit from display due to dead channels
             show (bool): show a figure when finished. Defaults to False.
             save (str or bool): filename to save, or False. Defaults to False.
             alpha (type): Alpha value of points in scatter plot of raw data projected on to (p0, p1). Defaults to 0.5.
@@ -422,16 +424,16 @@ def plot_principal_components(
     # these are the principal component vectors
     pc = pca.components_
     # adds in empty values to allow 4x4 display of vectors
-    display_pc = np.insert(pc, faulty_channels, np.nan, axis=1)
+    display_pc = np.insert(pc, remove_channels, np.nan, axis=1)
 
-    # Plots each of the first 3 principal components
+    # Plots each of the first 2 principal components
     for i in range(1, 3):
         vector = np.insert(display_pc[i - 1], [0, 14], np.nan).reshape((4, 4))
         vrange = np.nanmax(abs(vector))
         im = axes.flat[i].imshow(vector, cmap="bwr", vmax=vrange, vmin=-vrange)
         axes.flat[i].axis("off")
         axes.flat[i].set_title(
-            "$s$ = {:0.2f}".format(pca.explained_variance_ratio_[i - 1])
+            "$p_{}$ var = {:0.2f}".format(i-1,pca.explained_variance_ratio_[i - 1])
         )
         divider = make_axes_locatable(axes.flat[i])
         cax = divider.append_axes("bottom", size="10%", pad=0.1)
