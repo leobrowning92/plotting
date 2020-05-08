@@ -250,96 +250,102 @@ def plot_conductance(sdf, ax, tr):
 
 def plot_voltages(vdf, ax, tr, remove_channels):
     
-    vdf = vdf[(vdf.trel > tr[0]) & (vdf.trel < tr[1])]
+    vdf = vdf[(vdf.trel > tr[0]) & (vdf.trel < tr[1])] #removes all elements outside the time period of interest
     
-    channels = list(set([i for i in range(16)])-set(remove_channels))
+    channels = list(set([i + 1 for i in range(16)])-set(remove_channels)) #creates list of non-faulty channels
     num_channels = len(channels)
     
-    cmap = cm.rainbow(np.linspace(0,1,num_channels))
-    ax.set_prop_cycle('color', cmap.tolist())
+    cmap = cm.rainbow(np.linspace(0,1,num_channels))  #creates colormap for non-faulty channels
+    ax.set_prop_cycle('color', cmap.tolist()) #uses colormap to ensure each line is a different colour
     
-    for i in range(16):
-        if i in remove_channels:
+    for i in range(16): #iterates over all channels
+        if i + 1 in remove_channels: #removes faulty channels
             pass
         else:
             ax.plot(
-                vdf.trel,
-                vdf[list(vdf)[i + 1]],
-                alpha=1,
+                vdf.trel,                   #x-coordinates of plotted line (relative time)
+                vdf[list(vdf)[i + 1]],      #y-coordinates of plotted line (voltage)
+                alpha=1,                    #fully opaque
                 linewidth=1,
             )
     
-    ax.set_xlabel("Time (s)", fontsize=12)
+    ax.set_xlabel("Time (s)", fontsize=12) 
     ax.set_ylabel("Voltage (V)", fontsize=12)
     ax.set_ylim(ymin=-15,ymax=15)
-    ax.tick_params(direction="in", which="both")
-    ax.legend([f"v{channel + 1}" for channel in channels], ncol=8)
+    ax.tick_params(direction="in", which="both") #causes ticks to point into the box, on both x and y axes
+    ax.legend([f"v{channel}" for channel in channels], ncol=8) #creates legend for voltage channel line plot
 
 
 def plot_grouped_voltages(vdf, ax, tr, remove_channels, colors=c3):
     
-    vdf = vdf[(vdf.trel > tr[0]) & (vdf.trel < tr[1])]
+    vdf = vdf[(vdf.trel > tr[0]) & (vdf.trel < tr[1])] #removes all elements outside the time period of interest
     
-    channels = list(set([i for i in range(16)])-set(remove_channels))
+    channels = list(set([i + 1 for i in range(16)])-set(remove_channels)) #creates list of non-faulty channels
     
-    for i in range(16):
-        if i in remove_channels:
+    for i in range(16): #iterates over all channels
+        if i + 1 in remove_channels: #removes faulty channels
             pass
         else:
             ax.plot(
-                vdf.trel,
-                vdf[list(vdf)[i + 1]],
-                color=colors[i],
-                alpha=1,
-                linewidth=0.5,
+                vdf.trel,                     #x-coordinates of plotted line (relative time)
+                vdf[list(vdf)[i + 1]],        #y-coordinates of plotted line (voltage)
+                color=colors[i],              #groups voltages spatially by color using the list "c3"
+                alpha=1,                      #fully opaque
+                linewidth=1,
             )
 
     ax.set_xlabel("Time (s)", fontsize=12)
     ax.set_ylabel("Voltage (V)", fontsize=12)
     ax.set_ylim(ymin=-15,ymax=15)
-    ax.tick_params(direction="in", which="both")
-    ax.legend([f"v{channel + 1}" for channel in channels], ncol=4)
+    ax.tick_params(direction="in", which="both") #causes ticks to point into the box, on both x and y axes
+    ax.legend([f"v{channel + 1}" for channel in channels], ncol=4) #creates legend for voltage channel line plot
     
 def plot_signal(
     vdf,
     sdf,
     remove_channels,
-    tr,
+    tr, #time period of interest
     show,
-    grouped,
+    grouped, #whether voltages are grouped according to spatial distribution across the device
     save="",
     title=True,
 ):
-    fig, axes = plt.subplots(nrows=2, figsize=(10, 8))
+    fig, axes = plt.subplots(nrows=2, figsize=(10, 8)) 
+    #creates a set of subplots in a single figure
+    
     plot_conductance(sdf, axes.flat[0], tr)
+    #function creates conductance subplot
+    
     if grouped:
-        plot_grouped_voltages(vdf, axes.flat[1], tr, remove_channels, colors=c3)
+        plot_grouped_voltages(vdf, axes.flat[1], tr, remove_channels, colors=c3) #plots overlayed voltages grouped together by spatial                                                                                            distribution
     else:
-        plot_voltages(vdf, axes.flat[1], tr, remove_channels)
+        plot_voltages(vdf, axes.flat[1], tr, remove_channels) #plots overlayed voltages on individually
     for label in (
         axes.flat[1].get_xticklabels()
         + axes.flat[1].get_yticklabels()
         + axes.flat[0].get_xticklabels()
         + axes.flat[0].get_yticklabels()
     ):
-        label.set_fontsize(12)
-    # axes.flat[2].legend(ncol = 2, fontsize = 12)
+        label.set_fontsize(12) #sets fontsize of all tick labels to 12
+    
     if title:
         axes.flat[0].set_title(save)
-    for i in range(len(axes)):
+        
+    for i in range(len(axes)): #describes position of each subplot within the figure
         axes[i].text(
-            0.03,
-            0.91,
+            0.03, #x-position of subplot
+            0.91, #y-position of subplot
             sublabels[i],
             horizontalalignment="left",
-            verticalalignment="center",
-            transform=axes[i].transAxes,
-            color="k",
+            verticalalignment="center", #alignment of sublabels 
+            transform=axes[i].transAxes, #sets (x,y) coordinates to be relative to the axes of the specific subplot being iterated over
+            color="k", #color, size and style of each sublabel
             size="large",
-            weight="bold",
+            weight="bold", 
         )
 
     plt.tight_layout()
+    
     if save:
         plt.savefig(save + ".png")
         axes.flat[0].set_title("")
@@ -359,28 +365,32 @@ def plot_stacked_voltages(
     time_correction=0,
     title=True,
 ):
-    fig, axes = plt.subplots(nrows=4, ncols=4, figsize=(15, 10))
-    vdf = vdf[(vdf.trel > tr[0]) & (vdf.trel < tr[1])]
-    channels = list(set([i for i in range(16)])-set(remove_channels))
+    channels = list(set([i + 1 for i in range(16)])-set(remove_channels)) #creates list of non-faulty channels
     num_channels = len(channels)
-    for i in range(16):
-        if i in remove_channels:
+    
+    fig, axes = plt.subplots(nrows=4, ncols=4, figsize=(15, 10)) #creates a set of 4x4 subplots in a single figure
+    
+    vdf = vdf[(vdf.trel > tr[0]) & (vdf.trel < tr[1])] #removes all elements outside the time period of interest
+    
+    for i in range(16): #iterates over all channels
+        if i + 1 in remove_channels: #removes faulty channels
             pass
         else:
             axes.flat[i].plot(
-                vdf.trel,
-                vdf[list(vdf)[i + 1]],
-                alpha=1,
+                vdf.trel,               #x-coordinates of plotted line (relative time)
+                vdf[list(vdf)[i + 1]],  #y-coordinates of plotted line (voltage)
+                alpha=1,                #fully opaque
                 linewidth=1,
                 )
             axes.flat[i].set_xlabel("Time (s)", fontsize=12)
             axes.flat[i].set_ylabel("Voltage (V)", fontsize=12)
             axes.flat[i].set_ylim(ymin=-15,ymax=15)
             axes.flat[i].tick_params(direction="in", which="both")
-            axes.flat[i].set_title(f"channel {i + 1}")
+            axes.flat[i].set_title(f"channel {i + 1}") #adds subplot title
             labels = axes.flat[i].get_xticklabels() + axes.flat[i].get_yticklabels()
             for label in labels:
-                label.set_fontsize(12)
+                label.set_fontsize(12) #sets ticklabel fontsize
+                
     plt.tight_layout()
 
 
@@ -391,7 +401,7 @@ def plot_principal_components(
         calculates the principal components of the data resd, and then plots their relative variance, the first two components and the projection of the data on to those first two components. Assumes len(16) data.
         Args:
             resd (np.array): numpy array with columns = dimensions and rows = measurements
-            remove_channels (list): Columns to omit from display due to dead channels
+            new_remove_channels (list): Columns to omit from display due to dead channels
             show (bool): show a figure when finished. Defaults to False.
             save (str or bool): filename to save, or False. Defaults to False.
             alpha (type): Alpha value of points in scatter plot of raw data projected on to (p0, p1). Defaults to 0.5.
@@ -410,8 +420,11 @@ def plot_principal_components(
     pca = PCA()
     # resd is an np array where each column is a dimension (voltage channel)
     # and each row is a measurement of all dimensions (voltage at a time)
+    
     pca.fit(resd)
+    # fit just refers to finding the principal components that "fit" your specific data (resd)
 
+    #creates a 6.3in x 6.3in figure containing a 2x2 grid of subplots
     fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(6.3, 6.3))
     
     # plots the relative variance that is due to each of the pc vectors
@@ -420,7 +433,6 @@ def plot_principal_components(
     axes.flat[0].set_xlabel("principal component")
     
     
-
     # these are the principal component vectors
     pc = pca.components_
     # adds in empty values to allow 4x4 display of vectors
@@ -428,27 +440,29 @@ def plot_principal_components(
 
     # Plots each of the first 2 principal components
     for i in range(1, 3):
-        vector = np.insert(display_pc[i - 1], [0, 14], np.nan).reshape((4, 4))
+        vector = np.insert(display_pc[i - 1], [0, 14], np.nan).reshape((4, 4)) #places each principle component basis vector into a 4x4 array                                                                                     with nan at indices 0 and 14 (ie ensures there are 16 entries)
         vrange = np.nanmax(abs(vector))
-        im = axes.flat[i].imshow(vector, cmap="bwr", vmax=vrange, vmin=-vrange)
-        axes.flat[i].axis("off")
-        axes.flat[i].set_title(
-            "$p_{}$ var = {:0.2f}".format(i-1,pca.explained_variance_ratio_[i - 1])
+        im = axes.flat[i].imshow(vector, cmap="bwr", vmax=vrange, vmin=-vrange) #displays each component vector using a blue/white/red colour map                                                                                  with a range defined by vrange
+        
+        axes.flat[i].axis("off")  # turns off axes and axes values in the component vector displays
+        axes.flat[i].set_title( #adds the percentage of variance this component vector accounts for as the title, 2dp
+            "$p_{}$, var = {:0.2f}".format(i-1,pca.explained_variance_ratio_[i - 1])
         )
-        divider = make_axes_locatable(axes.flat[i])
-        cax = divider.append_axes("bottom", size="10%", pad=0.1)
-        cb = plt.colorbar(
-            im, cax=cax, orientation="horizontal", label="V", format="%.2f"
-        )
+        
+        divider = make_axes_locatable(axes.flat[i]) #package that allows colorbar to placed in a specific location
+        cax = divider.append_axes("bottom", size="10%", pad=0.1) #returns instance of AxesLocator class, providing append_axes method, used to                                                                     create a new axes for a component vector grid
+        cb = plt.colorbar( #adds colorbar "cb" to plot, where im is the image descibed by the colorbar, cax is the new axes
+                        im, cax=cax, orientation="horizontal", label="V", format="%.2f" 
+        ) #orientation=colorbar orientation, label=label on colorbar's long axis, format=no. decimal points on scale
         cmin = -vrange  # colorbar min value
-        cmax = vrange
-        span = cmax - cmin
+        cmax = vrange # colorbar max value
+        span = cmax - cmin  # colorbar range
 
-        cb.set_ticks([cmin + (0.1 * span), cmax - (0.1 * span)])
-        cb.set_ticklabels(
+        cb.set_ticks([cmin + (0.1 * span), cmax - (0.1 * span)]) #Set the locations of the tick marks from sequence
+        cb.set_ticklabels( #Adds the voltage correlations corresponding to the locations of the ticks on the colorbar
             ["{:.2f}".format(cmin + (0.1 * span)), "{:.2f}".format(cmax - (0.1 * span))]
         )
-        cb.set_label("relative correlation")
+        cb.set_label("relative correlation") #adds a label to the colorbar
 
 
 
@@ -463,10 +477,10 @@ def plot_principal_components(
         ls=ls,
         ends=ends,
     )
-    axes.flat[3].set_ylabel("$p_1$")
-    axes.flat[3].set_xlabel("$p_0$")
+    axes.flat[3].set_ylabel("$p_1$") #sets y-axis title to p_1
+    axes.flat[3].set_xlabel("$p_0$") #sets x-axis title to p_0
 
-    # formatting
+    # formatting (adding sublabels for each subplot)
     for i in range(len(axes.flat)):
         axes.flat[i].text(
             -0.15,
@@ -479,7 +493,7 @@ def plot_principal_components(
             size="large",
             weight="bold",
         )
-    plt.tight_layout()
+    plt.tight_layout() #fits subplots into figure
     if save:
         plt.savefig(save + ".pdf")
         plt.savefig(save + ".png")
@@ -510,7 +524,7 @@ def plot_pca_projection(
             pc (np.array): principal component vectors as from
                 sklearn.decomposition.PCA
             ax (mpl axis): optional axis. Defaults to None.
-            components (2d tupple): which two principal components to
+            components (2d tuple): which two principal components to
                 project on to. Defaults to (0, 1).
             ls (string): mpl linestyle. Defaults to ''.
             alpha (float [0,1]): alpha of points. Defaults to 0.5.
@@ -527,24 +541,24 @@ def plot_pca_projection(
         fig, ax = plt.subplots(figsize=(6.3, 6.3))
     # projection of the measurements in resd on to the principal components
     ax.plot(
-        resd.dot(pc[components[0]]),
-        resd.dot(pc[components[1]]),
-        ls=ls,
-        marker=".",
-        alpha=alpha,
+        resd.dot(pc[components[0]]), #x-axis is projection onto 1st principal component p_0
+        resd.dot(pc[components[1]]), #y-axis is projection onto 2nd principal component p_1
+        ls=ls, #linestyle
+        marker=".", #marker style
+        alpha=alpha, #sets alpha value (0.0 for fully transparent, 1.0 for fully opaque)
         label="data projection",
     )
     if ends:
-        ax.plot(
-            resd.dot(pc[components[0]])[0],
-            resd.dot(pc[components[1]])[0],
-            "ro",
+        ax.plot( #displays marker corresponding to the first data point in resd 
+            resd.dot(pc[components[0]])[0], #x-axis is projection onto 1st principal component p_0 by 1st data point (index 0)
+            resd.dot(pc[components[1]])[0], #y-axis is projection onto 2nd principal component p_1 by 1st data point (index 0)
+            "ro", #start marker formatting - red circle
             label="start",
         )
-        ax.plot(
-            resd.dot(pc[components[0]])[-1],
-            resd.dot(pc[components[1]])[-1],
-            "kx",
+        ax.plot( #displays marker corresponding to the final data point in resd 
+            resd.dot(pc[components[0]])[-1], #x-axis is projection onto 1st principal component p_0 by last data point (index -1)
+            resd.dot(pc[components[1]])[-1], #y-axis is projection onto 2nd principal component p_1 by last data point (index -1)
+            "kx", #end marker formatting - black x
             label="end",
         )
     #ax.set_xlabel("s[{}] = {:0.2f}".format(components[0], vari_ratio[components[0]]))
