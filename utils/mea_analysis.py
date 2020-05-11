@@ -17,6 +17,7 @@ import matplotlib.gridspec as gridspec
 import matplotlib.cm as cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from sklearn.decomposition import PCA
+import seaborn as sns
 from matplotlib.font_manager import FontProperties
 import scipy.optimize as opt
 
@@ -395,13 +396,15 @@ def plot_stacked_voltages(
 
 
 def plot_principal_components(
-    resd, remove_channels, show=False, save=False, alpha=0.5, ls="", ends=True
+    resd, remove_channels, add_null_channels=None, density=True, show=False, save=False, alpha=0.5, ls="", ends=True
 ):
     """
-        calculates the principal components of the data resd, and then plots their relative variance, the first two components and the projection of the data on to those first two components. Assumes len(16) data.
+        calculates the principal components of the data resd, and then plots their relative variance, the first two components and the projection of the data on to those first two components.
         Args:
             resd (np.array): numpy array with columns = dimensions and rows = measurements
-            new_remove_channels (list): Columns to omit from display due to dead channels
+            remove_channels (list): Columns to omit from display due to dead channels
+            add_null_channels (list): Null columns to add to final 4x4 display to replace dead channels. Defaults to None.
+            density (bool): Figure contains a kernel density estimate plot. Defaults to True.
             show (bool): show a figure when finished. Defaults to False.
             save (str or bool): filename to save, or False. Defaults to False.
             alpha (type): Alpha value of points in scatter plot of raw data projected on to (p0, p1). Defaults to 0.5.
@@ -425,7 +428,7 @@ def plot_principal_components(
     # fit just refers to finding the principal components that "fit" your specific data (resd)
 
     #creates a 6.3in x 6.3in figure containing a 2x2 grid of subplots
-    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(6.3, 6.3))
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8, 8))
     
     # plots the relative variance that is due to each of the pc vectors
     axes.flat[0].plot(pca.explained_variance_ratio_, "ro")
@@ -436,30 +439,30 @@ def plot_principal_components(
     # these are the principal component vectors
     pc = pca.components_
     # adds in empty values to allow 4x4 display of vectors
-    display_pc = np.insert(pc, remove_channels, np.nan, axis=1)
+    display_pc = np.insert(pc, add_null_channels, np.nan, axis=1)
 
     # Plots each of the first 2 principal components
     for i in range(1, 3):
-        vector = np.insert(display_pc[i - 1], [0, 14], np.nan).reshape((4, 4)) #places each principle component basis vector into a 4x4 array                                                                                     with nan at indices 0 and 14 (ie ensures there are 16 entries)
+        vector = np.insert(display_pc[i - 1], [0, 14], np.nan).reshape((4, 4)) #places each principle component basis vector into a 4x4 array                                                                                                                  #with nan at indices 0 and 14 (ie ensures there are 16 entries)
         vrange = np.nanmax(abs(vector))
-        im = axes.flat[i].imshow(vector, cmap="bwr", vmax=vrange, vmin=-vrange) #displays each component vector using a blue/white/red colour map                                                                                  with a range defined by vrange
+        im = axes.flat[i].imshow(vector, cmap="bwr", vmax=vrange, vmin=-vrange) #displays each component vector using a blue/white/red colour map                                                                                                                           #with a range defined by vrange
         
         axes.flat[i].axis("off")  # turns off axes and axes values in the component vector displays
-        axes.flat[i].set_title( #adds the percentage of variance this component vector accounts for as the title, 2dp
+        axes.flat[i].set_title(   #adds the percentage of variance this component vector accounts for as the title, 2dp
             "$p_{}$, var = {:0.2f}".format(i-1,pca.explained_variance_ratio_[i - 1])
         )
         
         divider = make_axes_locatable(axes.flat[i]) #package that allows colorbar to placed in a specific location
-        cax = divider.append_axes("bottom", size="10%", pad=0.1) #returns instance of AxesLocator class, providing append_axes method, used to                                                                     create a new axes for a component vector grid
-        cb = plt.colorbar( #adds colorbar "cb" to plot, where im is the image descibed by the colorbar, cax is the new axes
+        cax = divider.append_axes("bottom", size="10%", pad=0.1) #returns instance of AxesLocator class, providing append_axes method, used to                                                                                                  #create a new axes for a component vector grid
+        cb = plt.colorbar(                                       #adds colorbar "cb" to plot, where im is the image descibed by the colorbar, cax is the new axes
                         im, cax=cax, orientation="horizontal", label="V", format="%.2f" 
-        ) #orientation=colorbar orientation, label=label on colorbar's long axis, format=no. decimal points on scale
+        )                                                        #orientation=colorbar orientation, label=label on colorbar's long axis, format=no. decimal points on scale
         cmin = -vrange  # colorbar min value
-        cmax = vrange # colorbar max value
+        cmax = vrange   # colorbar max value
         span = cmax - cmin  # colorbar range
 
         cb.set_ticks([cmin + (0.1 * span), cmax - (0.1 * span)]) #Set the locations of the tick marks from sequence
-        cb.set_ticklabels( #Adds the voltage correlations corresponding to the locations of the ticks on the colorbar
+        cb.set_ticklabels(                                       #Adds the voltage correlations corresponding to the locations of the ticks on the colorbar
             ["{:.2f}".format(cmin + (0.1 * span)), "{:.2f}".format(cmax - (0.1 * span))]
         )
         cb.set_label("relative correlation") #adds a label to the colorbar
@@ -473,12 +476,11 @@ def plot_principal_components(
         pca.explained_variance_ratio_,
         pca.components_,
         axes.flat[3],
+        density,
         alpha=alpha,
         ls=ls,
         ends=ends,
     )
-    axes.flat[3].set_ylabel("$p_1$") #sets y-axis title to p_1
-    axes.flat[3].set_xlabel("$p_0$") #sets x-axis title to p_0
 
     # formatting (adding sublabels for each subplot)
     for i in range(len(axes.flat)):
@@ -506,6 +508,7 @@ def plot_pca_projection(
     vari_ratio,
     pc,
     ax=None,
+    density=True,
     components=(0, 1),
     ls="",
     alpha=0.5,
@@ -524,6 +527,7 @@ def plot_pca_projection(
             pc (np.array): principal component vectors as from
                 sklearn.decomposition.PCA
             ax (mpl axis): optional axis. Defaults to None.
+            density (bool): final figure contains a kernel density estimate plot. Defaults to True.
             components (2d tuple): which two principal components to
                 project on to. Defaults to (0, 1).
             ls (string): mpl linestyle. Defaults to ''.
@@ -539,34 +543,59 @@ def plot_pca_projection(
 
     if not (ax):
         fig, ax = plt.subplots(figsize=(6.3, 6.3))
-    # projection of the measurements in resd on to the principal components
-    ax.plot(
-        resd.dot(pc[components[0]]), #x-axis is projection onto 1st principal component p_0
-        resd.dot(pc[components[1]]), #y-axis is projection onto 2nd principal component p_1
-        ls=ls, #linestyle
-        marker=".", #marker style
-        alpha=alpha, #sets alpha value (0.0 for fully transparent, 1.0 for fully opaque)
-        label="data projection",
+    
+    if not (density):
+        # projection of the measurements in resd on to the principal components
+        ax.plot(
+            resd.dot(pc[components[0]]), #x-axis is projection onto 1st principal component p_0
+            resd.dot(pc[components[1]]), #y-axis is projection onto 2nd principal component p_1
+            ls=ls,                       #linestyle
+            marker=".",                  #marker style
+            alpha=alpha,                 #sets alpha value (0.0 for fully transparent, 1.0 for fully opaque)
+            label="data projection",
     )
-    if ends:
-        ax.plot( #displays marker corresponding to the first data point in resd 
-            resd.dot(pc[components[0]])[0], #x-axis is projection onto 1st principal component p_0 by 1st data point (index 0)
-            resd.dot(pc[components[1]])[0], #y-axis is projection onto 2nd principal component p_1 by 1st data point (index 0)
-            "ro", #start marker formatting - red circle
-            label="start",
+        ax.set_ylabel("$p_1$") #sets y-axis title to p_1
+        ax.set_xlabel("$p_0$") #sets x-axis title to p_0
+        
+        if ends:
+            ax.plot(                            #displays marker corresponding to the first data point in resd 
+                resd.dot(pc[components[0]])[0], #x-axis is projection onto 1st principal component p_0 by 1st data point (index 0)
+                resd.dot(pc[components[1]])[0], #y-axis is projection onto 2nd principal component p_1 by 1st data point (index 0)
+                "ro",                           #start marker formatting - red circle
+                label="start",
+            )
+            ax.plot(                             #displays marker corresponding to the final data point in resd 
+                resd.dot(pc[components[0]])[-1], #x-axis is projection onto 1st principal component p_0 by last data point (index -1)
+                resd.dot(pc[components[1]])[-1], #y-axis is projection onto 2nd principal component p_1 by last data point (index -1)
+                "kx",                            #end marker formatting - black x
+                label="end",
+            )
+        #ax.set_xlabel("p[{}] = {:0.2f}".format(components[0], vari_ratio[components[0]]))
+        #ax.set_ylabel("p[{}] = {:0.2f}".format(components[1], vari_ratio[components[1]]))
+        # ax.legend()
+        
+    if (density):
+        # projection of the measurements in resd on to the principal components to give a kernel density estimate plot
+        ax.set_ylabel("$p_1$") #sets y-axis title to p_1
+        ax.set_xlabel("$p_0$") #sets x-axis title to p_0
+        
+        ax.set_xlim(left=0.6,right=1.2) #sets x-axis limits
+        ax.set_ylim(bottom=-0.1, top=0.5) #sets y-axis limit
+        
+        sns.kdeplot(
+            resd.dot(pc[0,:]), 
+            resd.dot(pc[1,:]), 
+            shade=True, 
+            cbar=True,
+            cbar_kws={"label":"Density"},
+            label="data projection",
+            ax=ax
         )
-        ax.plot( #displays marker corresponding to the final data point in resd 
-            resd.dot(pc[components[0]])[-1], #x-axis is projection onto 1st principal component p_0 by last data point (index -1)
-            resd.dot(pc[components[1]])[-1], #y-axis is projection onto 2nd principal component p_1 by last data point (index -1)
-            "kx", #end marker formatting - black x
-            label="end",
-        )
-    #ax.set_xlabel("s[{}] = {:0.2f}".format(components[0], vari_ratio[components[0]]))
-    #ax.set_ylabel("s[{}] = {:0.2f}".format(components[1], vari_ratio[components[1]]))
-    # ax.legend()
+        
     if save:
         plt.tight_layout()
         plt.savefig(save + ".png")
+        
     if show:
         pass
 
