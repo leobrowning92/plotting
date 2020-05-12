@@ -486,7 +486,7 @@ def plot_principal_components(
     for i in range(len(axes.flat)):
         axes.flat[i].text(
             -0.15,
-            1.05,
+            1.10,
             sublabels[i],
             horizontalalignment="left",
             verticalalignment="center",
@@ -494,7 +494,8 @@ def plot_principal_components(
             color="k",
             size="large",
             weight="bold",
-        )
+        )    
+        
     plt.tight_layout() #fits subplots into figure
     if save:
         plt.savefig(save + ".pdf")
@@ -579,8 +580,8 @@ def plot_pca_projection(
         ax.set_ylabel("$p_1$") #sets y-axis title to p_1
         ax.set_xlabel("$p_0$") #sets x-axis title to p_0
         
-        ax.set_xlim(left=0.6,right=1.2) #sets x-axis limits
-        ax.set_ylim(bottom=-0.1, top=0.5) #sets y-axis limit
+        ax.set_xlim(left=0.4,right=1.2) #sets x-axis limits
+        ax.set_ylim(bottom=0.0, top=0.7) #sets y-axis limit
         
         sns.kdeplot(
             resd.dot(pc[0,:]), 
@@ -591,7 +592,7 @@ def plot_pca_projection(
             label="data projection",
             ax=ax
         )
-        
+       
     if save:
         plt.tight_layout()
         plt.savefig(save + ".png")
