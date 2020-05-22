@@ -504,6 +504,39 @@ def plot_principal_components(
     return fig, axes
 
 
+def plot_pca_scatter(
+    resd,
+    remove_channels):
+    
+    # This step is VITAL for reasonable PCA. without some form of normalization pca is pretty odd.
+    # resd is the original data
+    # resd is an np array where each column is a dimension (voltage channel)
+    # and each row is a measurement of all dimensions (voltage at a time)
+    # normalise resd, to make PCA play nice
+    # can normalise in a number of ways, eg normalise by the whole dataset mean etc
+    resd = np.array([(point - point.mean()) / point.mean() for point in resd])
+
+    # instantiating a PCA oject
+    pca = PCA()
+
+    # perform the fit method of the pca object using our normalised data
+    pca.fit(resd)
+    # fit just refers to finding the pricipal components and score that "fit" your specific data (resd)
+    
+    pc = pca.components_ # attribute of the pca object after we have done fit
+    
+    projection = resd.dot(pc[:2,:].T)
+    
+    plt.scatter(projection[:,0], projection[:,1], alpha=0.2)
+    
+    plt.xlabel("$p_0$") #sets y-axis title to p_1
+    plt.ylabel("$p_1$") #sets x-axis title to p_0
+    
+    # plt.xlim((0,200))
+    # plt.ylim((-10,59))
+    
+    plt.show()
+
 def plot_pca_projection(
     resd,
     vari_ratio,
